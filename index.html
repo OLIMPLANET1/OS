@@ -300,8 +300,10 @@ function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).sl
 /* ---------- helpers ---------- */
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function byId(id){ return state.tasks.find(t=>t.id===id); }
-function childrenOf(id){ return state.tasks.filter(t=>t.parentId===id).sort((a,b)=>(a.order||0)-(b.order||0)); }
-function topLevel(){ return state.tasks.filter(t=>!t.parentId || !byId(t.parentId)).sort((a,b)=>(a.order||0)-(b.order||0)); }
+function prRank(p){ return p==='높음'?0:p==='보통'?1:p==='낮음'?3:2; } // 높음>보통>미지정>낮음
+function cmpTask(a,b){ return prRank(a.priority)-prRank(b.priority) || (a.order||0)-(b.order||0); }
+function childrenOf(id){ return state.tasks.filter(t=>t.parentId===id).sort(cmpTask); }
+function topLevel(){ return state.tasks.filter(t=>!t.parentId || !byId(t.parentId)).sort(cmpTask); }
 function descendants(id){ let out=[]; childrenOf(id).forEach(c=>{ out.push(c); out=out.concat(descendants(c.id)); }); return out; }
 function projColor(name){ let h=0; name=name||''; for(let i=0;i<name.length;i++) h=name.charCodeAt(i)+((h<<5)-h); return `hsl(${Math.abs(h)%360} 55% 48%)`; }
 function initials(name){ return (name||'').trim().slice(0,2)||'–'; }
