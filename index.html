@@ -32,6 +32,9 @@
   .plink:hover{text-decoration:underline;}
   .plink-edit{font-size:12px;margin-left:6px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-radius:5px;padding:2px 6px;}
   .plink-edit:hover{background:var(--bg-muted);color:var(--text);}
+  .pname-edit{border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-radius:5px;padding:1px 5px;font-size:12px;opacity:0;}
+  .project-head:hover .pname-edit{opacity:1;}
+  .pname-edit:hover{background:var(--bg-muted);color:var(--text);}
   .rp-doc{font-size:12px;color:var(--accent);text-decoration:none;white-space:nowrap;}
   .rp-doc:hover{text-decoration:underline;}
   .doc-cell{display:inline-flex;align-items:center;gap:6px;}
@@ -555,6 +558,7 @@ function renderList(){
       <div class="project-head" onclick="toggleGroup('${esc(proj)}')">
         <span class="chev">▼</span>
         <span class="pname">${esc(proj)}</span>
+        <button class="pname-edit" title="프로젝트 이름 수정" onclick="event.stopPropagation();renameProject('${esc(proj)}')">✎</button>
         <span class="pcount">${total}</span>
         <span class="pmeta">${sum.dateStr?`일정 ${sum.dateStr}`:''}${sum.who.length?`${sum.dateStr?'  ·  ':''}${esc(sum.who.join(', '))}`:''}</span>
       </div>
@@ -669,6 +673,20 @@ function plinkHtml(proj){
   const link = url?`<a class="plink" href="${esc(url)}" target="_blank" onclick="event.stopPropagation()">🔗 자료 ↗</a>`:'';
   const edit = `<button class="plink-edit" title="프로젝트 링크" onclick="event.stopPropagation();editProjectLink('${esc(proj)}')">${url?'✎':'🔗 링크'}</button>`;
   return link+edit;
+}
+function renameProject(old){
+  const name=prompt('프로젝트 이름을 수정하세요.', old);
+  if(name===null) return;
+  const n=name.trim();
+  if(!n || n===old) return;
+  const merge = (state.projects.includes(n) || state.tasks.some(t=>t.project===n));
+  if(merge && !confirm(`'${n}' 프로젝트가 이미 있습니다. 합칠까요?`)) return;
+  state.tasks.forEach(t=>{ if(t.project===old) t.project=n; });
+  state.projects = [...new Set(state.projects.map(p=>p===old?n:p))];
+  if(!state.projects.includes(n)) state.projects.push(n);
+  if(state.projectLinks[old]){ if(!state.projectLinks[n]) state.projectLinks[n]=state.projectLinks[old]; delete state.projectLinks[old]; }
+  if(old in state.collapsed){ state.collapsed[n]=state.collapsed[old]; delete state.collapsed[old]; }
+  save(); render();
 }
 function editProjectLink(proj){
   const cur=state.projectLinks[proj]||'';
