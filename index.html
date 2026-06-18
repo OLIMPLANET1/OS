@@ -1138,7 +1138,7 @@ function updateSyncUI(){ const b=document.getElementById('pull-btn'); if(b) b.st
 function nowt(){ return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
 let _pushTimer=null;
 function scheduleSync(){ if(!getSyncUrl()) return; clearTimeout(_pushTimer); setSyncStatus('저장 중…'); _pushTimer=setTimeout(pushToSheet,800); }
-function buildMeta(){ return { projectLinks: state.projectLinks||{}, peopleColors: state.peopleColors||{}, title: localStorage.getItem(TITLE_KEY)||'' }; }
+function buildMeta(){ return { projects: state.projects||[], projectLinks: state.projectLinks||{}, peopleColors: state.peopleColors||{}, title: localStorage.getItem(TITLE_KEY)||'' }; }
 function pushToSheet(){
   const url=getSyncUrl(); if(!url) return;
   // text/plain 본문 → 프리플라이트(OPTIONS) 없이 전송 (Apps Script CORS 회피)
@@ -1159,7 +1159,10 @@ function pullFromSheet(opts){
       if(d.meta.peopleColors) state.peopleColors=d.meta.peopleColors;
       if(d.meta.title){ localStorage.setItem(TITLE_KEY,d.meta.title); loadTitle(); }
     }
-    migrate(); state.projects=projectsFromTasks(); state.people=peopleFromTasks(); assignAllColors();
+    migrate();
+    const metaProjects=(d.meta && Array.isArray(d.meta.projects))?d.meta.projects:[];
+    state.projects=[...new Set([...metaProjects, ...projectsFromTasks()])]; // 빈 프로젝트도 유지
+    state.people=peopleFromTasks(); assignAllColors();
     state.expanded={}; state.tasks.forEach(t=>{ if(!t.parentId) state.expanded[t.id]=true; });
     save({noSync:true}); render(); setSyncStatus('시트에서 불러옴 · '+nowt());
   }).catch(()=>setSyncStatus('불러오기 실패 (URL/배포 확인)'));
