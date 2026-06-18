@@ -187,7 +187,8 @@
   .kcard .kc-name{font-weight:600;font-size:13.5px;margin-bottom:6px;line-height:1.35;}
   .kcard .kc-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);}
   .kcard .kc-meta .who{display:inline-flex;align-items:center;gap:4px;}
-  .avatar{width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:600;}
+  .avset{display:inline-flex;align-items:center;gap:2px;}
+  .avatar{width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;line-height:1;display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex:none;}
   .empty{color:var(--text-muted);text-align:center;padding:40px 0;font-size:13px;}
 
   /* modal */
@@ -331,18 +332,19 @@
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['대기','진행중','완료'];
-let state = { tasks: [], projects: [], people: [], projectLinks:{}, view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'' };
+let state = { tasks: [], projects: [], people: [], peopleColors:{}, projectLinks:{}, view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'' };
 
 /* ---------- persistence ---------- */
 function load(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){ const d=JSON.parse(raw); state.tasks=d.tasks||[]; state.collapsed=d.collapsed||{}; state.expanded=d.expanded||{}; state.projects=d.projects||[]; state.people=d.people||[]; state.projectLinks=d.projectLinks||{}; }
+    if(raw){ const d=JSON.parse(raw); state.tasks=d.tasks||[]; state.collapsed=d.collapsed||{}; state.expanded=d.expanded||{}; state.projects=d.projects||[]; state.people=d.people||[]; state.projectLinks=d.projectLinks||{}; state.peopleColors=d.peopleColors||{}; }
     else { seedFromSheet(); }
   }catch(e){ state.tasks=[]; }
   migrate();
   if(!state.projects.length) state.projects = projectsFromTasks();
   if(!state.people.length) state.people = peopleFromTasks();
+  assignAllColors();
 }
 function peopleFromTasks(){
   const seen=[]; state.tasks.slice().sort((a,b)=>(a.order||0)-(b.order||0))
@@ -371,7 +373,7 @@ function seedFromSheet(){
   save();
 }
 function save(opts){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,projects:state.projects,people:state.people,projectLinks:state.projectLinks,collapsed:state.collapsed,expanded:state.expanded}));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,projects:state.projects,people:state.people,peopleColors:state.peopleColors,projectLinks:state.projectLinks,collapsed:state.collapsed,expanded:state.expanded}));
   if(!(opts&&opts.noSync)) scheduleSync();
 }
 function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
@@ -386,6 +388,31 @@ function topLevel(){ return state.tasks.filter(t=>!t.parentId || !byId(t.parentI
 function descendants(id){ let out=[]; childrenOf(id).forEach(c=>{ out.push(c); out=out.concat(descendants(c.id)); }); return out; }
 function projColor(name){ let h=0; name=name||''; for(let i=0;i<name.length;i++) h=name.charCodeAt(i)+((h<<5)-h); return `hsl(${Math.abs(h)%360} 55% 48%)`; }
 function initials(name){ return (name||'').trim().slice(0,2)||'–'; }
+/* 담당자 아바타: 단일 이니셜 + 고유 배경색(중복 금지). 찰스/안나는 고정. */
+const RESERVED_AV = { '찰스':{letter:'J',color:'#2563eb',fg:'#fff'}, '안나':{letter:'A',color:'#facc15',fg:'#1f2937'} };
+const AV_PALETTE = ['#16a34a','#dc2626','#9333ea','#0891b2','#db2777','#ea580c','#0d9488','#7c3aed','#65a30d','#c2410c','#0369a1','#be123c','#4d7c0f','#a21caf'];
+function usedColors(){ const s=new Set(); Object.values(RESERVED_AV).forEach(o=>s.add(o.color)); Object.values(state.peopleColors).forEach(c=>s.add(c)); return s; }
+function ensurePersonColor(name){
+  name=(name||'').trim();
+  if(!name || RESERVED_AV[name] || state.peopleColors[name]) return;
+  const used=usedColors();
+  let c=AV_PALETTE.find(x=>!used.has(x));
+  if(!c){ let i=0; do{ c=`hsl(${(i*53+17)%360} 60% 45%)`; i++; }while(used.has(c) && i<400); }
+  state.peopleColors[name]=c;
+}
+function assignAllColors(){ allPeople().forEach(ensurePersonColor); }
+function avatarInfo(name){
+  name=(name||'').trim();
+  if(RESERVED_AV[name]) return RESERVED_AV[name];
+  ensurePersonColor(name);
+  let letter=name?name[0]:'?'; if(/[a-z]/i.test(letter)) letter=letter.toUpperCase();
+  return { letter, color: state.peopleColors[name]||'#a1a1aa', fg:'#fff' };
+}
+function avatarsHtml(assignee){
+  const ps=(assignee||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!ps.length) return '';
+  return '<span class="avset">'+ps.map(p=>{ const a=avatarInfo(p); return `<span class="avatar" style="background:${a.color};color:${a.fg}" title="${esc(p)}">${esc(a.letter)}</span>`; }).join('')+'</span>';
+}
 function progressOf(id){ const d=descendants(id); if(!d.length) return null; const done=d.filter(x=>x.status==='완료').length; return {done,total:d.length,pct:Math.round(done/d.length*100)}; }
 function docCell(doc){ if(!doc) return '–'; if(/^https?:\/\//i.test(doc)) return `<a class="doc-link" href="${esc(doc)}" target="_blank" onclick="event.stopPropagation()">열기 ↗</a>`; return `<span class="muted">${esc(doc)}</span>`; }
 /* 날짜 정규화/표기 */
@@ -607,6 +634,7 @@ function addPersonTo(id){
   const name=prompt('새 담당자 이름'); if(name===null) return;
   const n=name.trim(); if(!n) return;
   if(!state.people.includes(n)) state.people.push(n);
+  ensurePersonColor(n);
   toggleAssignee(id,n,true); closeAssigneeMenu();
 }
 function projSummary(proj){
@@ -687,7 +715,7 @@ function renderKanban(){
         </div>
         <div class="kc-name">${esc(t.task)}</div>
         <div class="kc-meta">
-          ${t.assignee?`<span class="who"><span class="avatar">${esc(initials(t.assignee))}</span>${esc(t.assignee)}</span>`:''}
+          ${t.assignee?`<span class="who">${avatarsHtml(t.assignee)}${esc(t.assignee)}</span>`:''}
           ${t.end?`<span>~ ${esc(fmtK(t.end))}</span>`:''}
           ${prog?`<span class="miniprog">하위 ${prog.done}/${prog.total}<span class="bar"><i style="width:${prog.pct}%"></i></span></span>`:''}
         </div>
@@ -843,7 +871,7 @@ function renderReport(){
 
   rows.forEach(r=>{
     html+=`<div class="rp-person">
-      <div class="rp-head"><span class="avatar">${esc(initials(r.p))}</span>${esc(r.p)}
+      <div class="rp-head">${avatarsHtml(r.p)}${esc(r.p)}
         <span class="cnt">완료 ${r.completed.length} · 진행 ${r.active.length}</span></div>`;
     if(r.completed.length){
       html+=`<div class="rp-sub">완료</div>`;
@@ -920,6 +948,7 @@ function addPersonModal(){
   const name=prompt('새 담당자 이름'); if(name===null) return;
   const n=name.trim(); if(!n) return;
   if(!state.people.includes(n)) state.people.push(n);
+  ensurePersonColor(n);
   const sel=getModalAssignees().split(',').map(s=>s.trim()).filter(Boolean);
   if(!sel.includes(n)) sel.push(n);
   renderAssigneeBox(sel.join(', '));
@@ -1019,7 +1048,7 @@ function updateSyncUI(){ const b=document.getElementById('pull-btn'); if(b) b.st
 function nowt(){ return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
 let _pushTimer=null;
 function scheduleSync(){ if(!getSyncUrl()) return; clearTimeout(_pushTimer); setSyncStatus('저장 중…'); _pushTimer=setTimeout(pushToSheet,800); }
-function buildMeta(){ return { projectLinks: state.projectLinks||{}, title: localStorage.getItem(TITLE_KEY)||'' }; }
+function buildMeta(){ return { projectLinks: state.projectLinks||{}, peopleColors: state.peopleColors||{}, title: localStorage.getItem(TITLE_KEY)||'' }; }
 function pushToSheet(){
   const url=getSyncUrl(); if(!url) return;
   // text/plain 본문 → 프리플라이트(OPTIONS) 없이 전송 (Apps Script CORS 회피)
@@ -1037,9 +1066,10 @@ function pullFromSheet(opts){
     state.tasks=d.tasks.map(t=>({parentId:t.parentId||null, order:Number(t.order)||0, ...t}));
     if(d.meta){
       if(d.meta.projectLinks) state.projectLinks=d.meta.projectLinks;
+      if(d.meta.peopleColors) state.peopleColors=d.meta.peopleColors;
       if(d.meta.title){ localStorage.setItem(TITLE_KEY,d.meta.title); loadTitle(); }
     }
-    migrate(); state.projects=projectsFromTasks(); state.people=peopleFromTasks();
+    migrate(); state.projects=projectsFromTasks(); state.people=peopleFromTasks(); assignAllColors();
     state.expanded={}; state.tasks.forEach(t=>{ if(!t.parentId) state.expanded[t.id]=true; });
     save({noSync:true}); render(); setSyncStatus('시트에서 불러옴 · '+nowt());
   }).catch(()=>setSyncStatus('불러오기 실패 (URL/배포 확인)'));
