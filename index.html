@@ -23,8 +23,11 @@
   header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 24px;}
   .header-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
   .brand{display:flex;align-items:center;gap:10px;margin-right:auto;}
-  .brand h1{font-size:17px;font-weight:700;margin:0;letter-spacing:-.01em;}
+  .brand h1{font-size:17px;font-weight:700;margin:0;letter-spacing:-.01em;outline:none;border-radius:6px;padding:1px 5px;cursor:text;}
+  .brand h1:hover{background:var(--bg-muted);}
+  .brand h1:focus{background:var(--bg);box-shadow:0 0 0 3px var(--accent-soft);}
   .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);}
+  .pmeta{font-size:12px;color:var(--text-muted);font-weight:400;margin-left:6px;}
 
   .view-toggle{display:inline-flex;background:var(--bg-muted);border-radius:var(--radius);padding:3px;}
   .view-toggle button{border:none;background:transparent;color:var(--text-soft);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:500;}
@@ -107,8 +110,8 @@
   .name-input{font-family:inherit;font-size:13px;width:100%;border:1px solid var(--accent);border-radius:6px;padding:5px 8px;background:var(--bg);box-shadow:0 0 0 3px var(--accent-soft);outline:none;}
   tr.newrow{background:var(--accent-soft);}
   .ttext{cursor:pointer;} .ttext:hover{text-decoration:underline;text-decoration-color:var(--border-strong);}
-  .pr{font-size:12px;font-weight:600;white-space:nowrap;}
-  .pr-높음{color:var(--pr-high);} .pr-보통{color:var(--pr-mid);} .pr-낮음{color:var(--pr-low);}
+  .pr{font-size:12px;font-weight:600;white-space:nowrap;color:var(--text-soft);}
+  .pr-높음,.pr-보통,.pr-낮음{color:var(--text-soft);}
   .who-chip{font-size:11px;color:var(--text-soft);}
 
   /* kanban */
@@ -121,7 +124,7 @@
   .kcard:active{cursor:grabbing;}
   .kcard.dragging{opacity:.4;}
   .kcard .kc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
-  .kcard .kc-proj{font-size:11px;font-weight:600;color:#fff;padding:1px 8px;border-radius:4px;}
+  .kcard .kc-proj{font-size:11px;font-weight:600;color:var(--text-soft);background:var(--bg-muted);padding:1px 8px;border-radius:4px;}
   .kcard .kc-name{font-weight:600;font-size:13.5px;margin-bottom:6px;line-height:1.35;}
   .kcard .kc-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);}
   .kcard .kc-meta .who{display:inline-flex;align-items:center;gap:4px;}
@@ -162,7 +165,9 @@
 <body>
 <header>
   <div class="header-row">
-    <div class="brand"><span class="dot"></span><h1>프로젝트 스케줄 보드</h1></div>
+    <div class="brand"><span class="dot"></span><h1 id="board-title" contenteditable="true" spellcheck="false" title="클릭하여 제목 수정"
+      onblur="saveTitle(this.innerText)"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">프로젝트 스케줄 보드</h1></div>
     <div class="view-toggle">
       <button id="tab-list" class="active" onclick="setView('list')">리스트</button>
       <button id="tab-kanban" onclick="setView('kanban')">칸반</button>
@@ -388,11 +393,13 @@ function renderList(){
     const list=groups[proj]||[];
     const collapsed=state.collapsed[proj]?'collapsed':'';
     const total=list.reduce((n,t)=>n+1+descendants(t.id).length,0);
+    const sum=projSummary(proj);
     html+=`<div class="project-group ${collapsed}">
       <div class="project-head" onclick="toggleGroup('${esc(proj)}')">
         <span class="chev">▼</span>
-        <span class="pname" style="color:${projColor(proj)}">${esc(proj)}</span>
+        <span class="pname">${esc(proj)}</span>
         <span class="pcount">${total}</span>
+        <span class="pmeta">${sum.dateStr?`일정 ${sum.dateStr}`:''}${sum.who.length?`${sum.dateStr?'  ·  ':''}담당 ${esc(sum.who.join(', '))}`:''}</span>
       </div>
       <div class="table-wrap">`;
     if(list.length){
@@ -447,16 +454,25 @@ function renderRow(t,depth,vis){
     </div></td>
     <td>${cellSelect(t.id,'category',t.category,['',...distinct('category')])}</td>
     <td>${cellSelect(t.id,'assignee',t.assignee,['',...distinct('assignee')])}</td>
-    <td>${cellSelect(t.id,'priority',t.priority,['','높음','보통','낮음'],'color:'+prColor(t.priority)+';font-weight:600')}</td>
+    <td>${cellSelect(t.id,'priority',t.priority,['','높음','보통','낮음'])}</td>
     <td><input type="date" class="cell-date" value="${esc(t.start)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','start',this.value)"></td>
     <td><input type="date" class="cell-date" value="${esc(t.end)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','end',this.value)"></td>
-    <td>${cellSelect(t.id,'status',t.status||'진행예정',STATUSES,'color:'+statusColor(t.status||'진행예정')+';font-weight:600')}</td>
+    <td>${cellSelect(t.id,'status',t.status||'진행예정',STATUSES)}</td>
     <td class="hide-sm" onclick="event.stopPropagation();openModal('${t.id}')">${docCell(t.doc)}</td>
   </tr>`;
   if(kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
   return html;
 }
 function distinct(field){ return [...new Set(state.tasks.map(t=>t[field]).filter(Boolean))].sort(); }
+function projSummary(proj){
+  const ts=state.tasks.filter(t=>t.project===proj);
+  const starts=ts.map(t=>t.start).filter(Boolean).sort();
+  const ends=ts.map(t=>t.end).filter(Boolean).sort();
+  const s=starts[0]||'', e=ends[ends.length-1]||'';
+  const dateStr=(s||e)?`${s||'…'} ~ ${e||'…'}`:'';
+  const who=[...new Set(ts.flatMap(t=>(t.assignee||'').split(',').map(x=>x.trim())).filter(Boolean))];
+  return {dateStr, who};
+}
 function updateField(id,field,value){
   const t=byId(id); if(!t) return;
   t[field]=value; save();
@@ -508,7 +524,7 @@ function renderKanban(){
       const prog=progressOf(t.id);
       html+=`<div class="kcard" draggable="true" data-id="${t.id}" ondragstart="onDragStart(event,'${t.id}')" ondragend="onDragEnd(event)" onclick="openModal('${t.id}')">
         <div class="kc-top">
-          <span class="kc-proj" style="background:${projColor(t.project)}">${esc(t.project)}</span>
+          <span class="kc-proj">${esc(t.project)}</span>
           ${t.priority?`<span class="pr pr-${t.priority}">${esc(t.priority)}</span>`:''}
         </div>
         <div class="kc-name">${esc(t.task)}</div>
@@ -637,6 +653,19 @@ function openNewInProject(proj){
   document.getElementById('m-task').focus();
 }
 
+/* ---------- 보드 제목 편집 ---------- */
+const TITLE_KEY='schedule-board-title';
+function loadTitle(){
+  const el=document.getElementById('board-title');
+  const t=localStorage.getItem(TITLE_KEY)||'프로젝트 스케줄 보드';
+  if(el) el.innerText=t; document.title=t;
+}
+function saveTitle(text){
+  let t=(text||'').replace(/\s+/g,' ').trim();
+  if(!t){ t='프로젝트 스케줄 보드'; const el=document.getElementById('board-title'); if(el) el.innerText=t; }
+  localStorage.setItem(TITLE_KEY,t); document.title=t;
+}
+
 /* ---------- 구글 시트 동기화 ---------- */
 const SYNC_KEY='schedule-sync-url';
 function getSyncUrl(){ return localStorage.getItem(SYNC_KEY)||''; }
@@ -681,7 +710,7 @@ function openSyncSettings(){
 /* ---------- init ---------- */
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
-load(); render(); updateSyncUI();
+loadTitle(); load(); render(); updateSyncUI();
 if(getSyncUrl()) pullFromSheet();   // 공유 연결돼 있으면 시트 데이터로 갱신
 </script>
 </body>
