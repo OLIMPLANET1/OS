@@ -32,10 +32,11 @@ def parse_date(s):
         return f"{int(y):04d}-{int(mo):02d}-{int(d):02d}", ""
     return "", s  # 날짜가 아니면 (예: '매일','주2회','1달에 1번') 메모로 반환
 
-STATUSES = {"진행중", "대기중", "완료"}
 def norm_status(s):
     s = clean(s)
-    return s if s in STATUSES else ""
+    if s == "대기중":
+        return "진행예정"
+    return s if s in {"진행중", "완료", "진행예정"} else ""
 
 _ids = set()
 def uid(seed):
@@ -133,7 +134,7 @@ for r in rows[3:]:
     edate, enote = parse_date(end)
     children.append(dict(
         project=cur_proj, task=task, category=cur_cat, assignee="안나",
-        start=sdate, end=edate, status=norm_status(status) or "대기중", doc=doc,
+        start=sdate, end=edate, status=norm_status(status) or "진행예정", doc=doc,
         progress=join_notes(prog, ("일정:" + snote) if snote else "", ("기한:" + enote) if enote else ""),
         issue=issue, src="anna",
     ))

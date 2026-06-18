@@ -86,9 +86,18 @@
 
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:20px;white-space:nowrap;}
   .badge .bdot{width:6px;height:6px;border-radius:50%;}
-  .st-대기중{background:#f4f4f5;color:#52525b;} .st-대기중 .bdot{background:var(--st-wait);}
+  .st-진행예정,.st-대기중{background:#f4f4f5;color:#52525b;} .st-진행예정 .bdot,.st-대기중 .bdot{background:var(--st-wait);}
   .st-진행중{background:var(--accent-soft);color:#1d4ed8;} .st-진행중 .bdot{background:var(--st-progress);}
   .st-완료{background:#dcfce7;color:#15803d;} .st-완료 .bdot{background:var(--st-done);}
+
+  /* status tabs */
+  .status-tabs{display:flex;gap:4px;width:100%;margin-top:12px;border-bottom:1px solid var(--border);}
+  .status-tabs button{border:none;background:transparent;color:var(--text-soft);font-size:13px;font-weight:500;
+    padding:8px 14px;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:6px;}
+  .status-tabs button:hover{color:var(--text);}
+  .status-tabs button.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .status-tabs .cnt{font-size:11px;color:var(--text-muted);background:var(--bg-muted);padding:0 6px;border-radius:20px;}
+  .empty-proj{padding:14px;display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:13px;}
   .pr{font-size:12px;font-weight:600;white-space:nowrap;}
   .pr-높음{color:var(--pr-high);} .pr-보통{color:var(--pr-mid);} .pr-낮음{color:var(--pr-low);}
   .who-chip{font-size:11px;color:var(--text-soft);}
@@ -149,6 +158,7 @@
       <button id="tab-list" class="active" onclick="setView('list')">리스트</button>
       <button id="tab-kanban" onclick="setView('kanban')">칸반</button>
     </div>
+    <button class="btn" onclick="addProject()">＋ 프로젝트</button>
     <button class="btn btn-primary" onclick="openModal()">＋ 작업 추가</button>
   </div>
   <div class="filters">
@@ -157,15 +167,12 @@
     <select id="f-project" onchange="render()"><option value="">전체</option></select>
     <span class="filter-label">담당자</span>
     <select id="f-assignee" onchange="render()"><option value="">전체</option></select>
-    <span class="filter-label">상태</span>
-    <select id="f-status" onchange="render()">
-      <option value="">전체</option><option>대기중</option><option>진행중</option><option>완료</option>
-    </select>
     <button class="btn btn-ghost" style="margin-left:auto" onclick="exportData()">내보내기</button>
     <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">가져오기</button>
     <button class="btn btn-ghost" onclick="resetToSheet()">시트 원본으로</button>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
   </div>
+  <div class="status-tabs" id="status-tabs"></div>
 </header>
 
 <main>
@@ -216,7 +223,7 @@
       <div class="field"><label>종료일(예상)</label><input type="date" id="m-end"></div>
       <div class="field">
         <label>상태</label>
-        <select id="m-status"><option>대기중</option><option>진행중</option><option>완료</option></select>
+        <select id="m-status"><option>진행예정</option><option>진행중</option><option>완료</option></select>
       </div>
       <div class="field">
         <label>결과물/진행문서 (URL 또는 메모)</label>
@@ -243,25 +250,36 @@
 <script src="data.js"></script>
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
-const STATUSES = ['대기중','진행중','완료'];
-let state = { tasks: [], view:'list', collapsed:{}, expanded:{}, editingId:null, pendingParent:null };
+const STATUSES = ['진행예정','진행중','완료'];
+let state = { tasks: [], projects: [], view:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null };
 
 /* ---------- persistence ---------- */
 function load(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){ const d=JSON.parse(raw); state.tasks=d.tasks||[]; state.collapsed=d.collapsed||{}; state.expanded=d.expanded||{}; }
+    if(raw){ const d=JSON.parse(raw); state.tasks=d.tasks||[]; state.collapsed=d.collapsed||{}; state.expanded=d.expanded||{}; state.projects=d.projects||[]; }
     else { seedFromSheet(); }
   }catch(e){ state.tasks=[]; }
+  migrate();
+  if(!state.projects.length) state.projects = projectsFromTasks();
+}
+function migrate(){
+  // 구버전 상태값 '대기중' → '진행예정'
+  state.tasks.forEach(t=>{ if(t.status==='대기중') t.status='진행예정'; });
+}
+function projectsFromTasks(){
+  const seen=[]; state.tasks.slice().sort((a,b)=>(a.order||0)-(b.order||0))
+    .forEach(t=>{ if(t.project && !seen.includes(t.project)) seen.push(t.project); });
+  return seen;
 }
 function seedFromSheet(){
   const seed = (window.SEED_TASKS||[]).map(t=>JSON.parse(JSON.stringify(t)));
   state.tasks = seed;
-  // 상위 항목은 기본 펼침
   seed.forEach(t=>{ if(!t.parentId) state.expanded[t.id]=true; });
+  state.projects = projectsFromTasks();
   save();
 }
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,collapsed:state.collapsed,expanded:state.expanded})); }
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,projects:state.projects,collapsed:state.collapsed,expanded:state.expanded})); }
 function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 /* ---------- helpers ---------- */
@@ -280,17 +298,24 @@ function matchTask(t){
   const q=document.getElementById('search').value.trim().toLowerCase();
   const fp=document.getElementById('f-project').value;
   const fa=document.getElementById('f-assignee').value;
-  const fs=document.getElementById('f-status').value;
   if(fp && t.project!==fp) return false;
   if(fa && !(t.assignee||'').includes(fa)) return false;
-  if(fs && t.status!==fs) return false;
+  if(state.statusTab && (t.status||'진행예정')!==state.statusTab) return false;
   if(q){ const hay=(t.task+' '+t.project+' '+t.assignee+' '+t.category+' '+t.progress+' '+t.issue).toLowerCase(); if(!hay.includes(q)) return false; }
   return true;
 }
 function hasFilter(){
   return document.getElementById('search').value.trim() || document.getElementById('f-project').value ||
-         document.getElementById('f-assignee').value || document.getElementById('f-status').value;
+         document.getElementById('f-assignee').value || state.statusTab;
 }
+function renderStatusTabs(){
+  const counts={'':state.tasks.length};
+  STATUSES.forEach(s=>counts[s]=state.tasks.filter(t=>(t.status||'진행예정')===s).length);
+  const tabs=[['','전체'],...STATUSES.map(s=>[s,s])];
+  document.getElementById('status-tabs').innerHTML = tabs.map(([v,label])=>
+    `<button class="${state.statusTab===v?'active':''}" onclick="setStatusTab('${v}')">${label}<span class="cnt">${counts[v]}</span></button>`).join('');
+}
+function setStatusTab(v){ state.statusTab=v; renderStatusTabs(); if(state.view==='list') renderList(); else renderKanban(); }
 function visibleSet(){
   if(!hasFilter()) return null; // null = 전체 표시
   const vis=new Set();
@@ -326,20 +351,24 @@ function setView(v){
   document.getElementById('kanban-view').style.display=v==='kanban'?'block':'none';
   render();
 }
-function render(){ refreshFilterOptions(); if(state.view==='list') renderList(); else renderKanban(); }
+function render(){ refreshFilterOptions(); renderStatusTabs(); if(state.view==='list') renderList(); else renderKanban(); }
 
 /* ---------- list (tree) ---------- */
 function renderList(){
   const vis=visibleSet();
   const tops=topLevel().filter(t=>!vis||vis.has(t.id));
   const body=document.getElementById('list-body');
-  document.getElementById('count-info').textContent = `상위 ${topLevel().length} · 전체 ${state.tasks.length}건`;
-  if(!tops.length){ body.innerHTML='<div class="empty">표시할 작업이 없습니다.</div>'; return; }
-  const groups={}; const orderKeys=[];
-  tops.forEach(t=>{ if(!groups[t.project]){groups[t.project]=[];orderKeys.push(t.project);} groups[t.project].push(t); });
+  document.getElementById('count-info').textContent = `프로젝트 ${state.projects.length} · 상위 ${topLevel().length} · 전체 ${state.tasks.length}건`;
+  const groups={};
+  tops.forEach(t=>{ (groups[t.project]=groups[t.project]||[]).push(t); });
+  // 표시 순서: 등록된 프로젝트 + 작업에 등장한 프로젝트
+  let projOrder=[...state.projects];
+  Object.keys(groups).forEach(p=>{ if(!projOrder.includes(p)) projOrder.push(p); });
+  if(vis) projOrder=projOrder.filter(p=>groups[p] && groups[p].length); // 필터 시 빈 그룹 숨김
+  if(!projOrder.length){ body.innerHTML='<div class="empty">표시할 작업이 없습니다.</div>'; return; }
   let html='';
-  orderKeys.forEach(proj=>{
-    const list=groups[proj];
+  projOrder.forEach(proj=>{
+    const list=groups[proj]||[];
     const collapsed=state.collapsed[proj]?'collapsed':'';
     const total=list.reduce((n,t)=>n+1+descendants(t.id).length,0);
     html+=`<div class="project-group ${collapsed}">
@@ -348,11 +377,18 @@ function renderList(){
         <span class="pname" style="color:${projColor(proj)}">${esc(proj)}</span>
         <span class="pcount">${total}</span>
       </div>
-      <div class="table-wrap"><table>
+      <div class="table-wrap">`;
+    if(list.length){
+      html+=`<table>
         <thead><tr><th>진행업무</th><th>구분</th><th>담당자</th><th>우선순위</th><th>시작일</th><th>종료일</th><th>상태</th><th class="hide-sm">문서</th></tr></thead>
         <tbody>`;
-    list.forEach(t=>{ html+=renderRow(t,0,vis); });
-    html+=`</tbody></table></div></div>`;
+      list.forEach(t=>{ html+=renderRow(t,0,vis); });
+      html+=`</tbody></table>`;
+    } else {
+      html+=`<div class="empty-proj">아직 작업이 없습니다.
+        <button class="btn btn-ghost btn-sm" onclick="openNewInProject('${esc(proj)}')">＋ 작업 추가</button></div>`;
+    }
+    html+=`</div></div>`;
   });
   body.innerHTML=html;
 }
@@ -374,7 +410,7 @@ function renderRow(t,depth,vis){
     <td>${t.priority?`<span class="pr pr-${t.priority}">${esc(t.priority)}</span>`:'–'}</td>
     <td class="dates">${esc(t.start)||'–'}</td>
     <td class="dates">${esc(t.end)||'–'}</td>
-    <td><span class="badge st-${t.status||'대기중'}"><span class="bdot"></span>${esc(t.status||'대기중')}</span></td>
+    <td><span class="badge st-${t.status||'진행예정'}"><span class="bdot"></span>${esc(t.status||'진행예정')}</span></td>
     <td class="hide-sm">${docCell(t.doc)}</td>
   </tr>`;
   if(kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
@@ -382,7 +418,13 @@ function renderRow(t,depth,vis){
 }
 function toggleGroup(p){ state.collapsed[p]=!state.collapsed[p]; save(); renderList(); }
 function toggleExpand(id){ state.expanded[id]=!state.expanded[id]; save(); renderList(); }
-function expandAll(v){ state.tasks.forEach(t=>{ if(descendants(t.id).length) state.expanded[t.id]=v; }); save(); renderList(); }
+function expandAll(v){
+  // 프로젝트 그룹 + 모든 하위 트리를 함께 펼치기/접기
+  const projs=new Set([...state.projects, ...topLevel().map(t=>t.project)]);
+  projs.forEach(p=>{ state.collapsed[p]=!v; });
+  state.tasks.forEach(t=>{ if(descendants(t.id).length) state.expanded[t.id]=v; });
+  save(); renderList();
+}
 
 /* ---------- kanban (top-level cards) ---------- */
 function renderKanban(){
@@ -390,7 +432,7 @@ function renderKanban(){
   const tops=topLevel().filter(t=>!vis||vis.has(t.id));
   let html='<div class="kanban">';
   STATUSES.forEach(st=>{
-    const list=tops.filter(t=>(t.status||'대기중')===st);
+    const list=tops.filter(t=>(t.status||'진행예정')===st);
     html+=`<div class="kcol" data-status="${st}" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${st}')">
       <div class="kcol-head"><span class="badge st-${st}"><span class="bdot"></span>${st}</span><span class="kcount">${list.length}</span></div>`;
     list.forEach(t=>{
@@ -432,7 +474,7 @@ function openModal(id){
   else pb.classList.remove('show');
   const v=(f,val)=>document.getElementById(f).value=val||'';
   v('m-task',t?.task); v('m-project',t?.project); v('m-category',t?.category); v('m-assignee',t?.assignee);
-  v('m-priority',t?.priority||''); v('m-start',t?.start); v('m-end',t?.end); v('m-status',t?.status||'대기중');
+  v('m-priority',t?.priority||''); v('m-start',t?.start); v('m-end',t?.end); v('m-status',t?.status||'진행예정');
   v('m-doc',t?.doc); v('m-progress',t?.progress); v('m-issue',t?.issue);
   renderSubsSection(id);
   document.getElementById('overlay').classList.add('open');
@@ -447,7 +489,7 @@ function openSub(parentId){
   pb.classList.add('show'); pb.innerHTML=`상위 작업: <b>${esc(parent.task)}</b> (${esc(parent.project)})`;
   const v=(f,val)=>document.getElementById(f).value=val||'';
   v('m-task',''); v('m-project',parent.project); v('m-category',parent.category); v('m-assignee',parent.assignee);
-  v('m-priority',''); v('m-start',''); v('m-end',''); v('m-status','대기중'); v('m-doc',''); v('m-progress',''); v('m-issue','');
+  v('m-priority',''); v('m-start',''); v('m-end',''); v('m-status','진행예정'); v('m-doc',''); v('m-progress',''); v('m-issue','');
   document.getElementById('subs-section').style.display='none';
   document.getElementById('overlay').classList.add('open');
   setTimeout(()=>document.getElementById('m-task').focus(),50);
@@ -461,7 +503,7 @@ function renderSubsSection(id){
   document.getElementById('subs-count').textContent=`(${kids.length})`;
   const el=document.getElementById('subs-list');
   el.innerHTML = kids.length ? kids.map(c=>`<div class="sub-item" onclick="openModal('${c.id}')">
-      <span class="badge st-${c.status||'대기중'}"><span class="bdot"></span>${esc(c.status||'대기중')}</span>
+      <span class="badge st-${c.status||'진행예정'}"><span class="bdot"></span>${esc(c.status||'진행예정')}</span>
       <span class="s-name">${esc(c.task)}</span>
       <span class="who-chip">${esc(c.assignee)||''}</span>
     </div>`).join('') : '<div class="muted" style="font-size:12px;padding:4px 8px">하위 작업이 없습니다.</div>';
@@ -508,7 +550,22 @@ function importData(ev){
 }
 function resetToSheet(){
   if(!confirm('현재 데이터를 지우고 구글 시트 원본 데이터로 초기화할까요?')) return;
-  state.collapsed={}; state.expanded={}; seedFromSheet(); render();
+  state.collapsed={}; state.expanded={}; state.projects=[]; seedFromSheet(); state.projects=projectsFromTasks(); save(); render();
+}
+
+/* ---------- 프로젝트 등록 ---------- */
+function addProject(){
+  const name=prompt('새 프로젝트 이름을 입력하세요');
+  if(name===null) return;
+  const n=name.trim();
+  if(!n) return;
+  if(state.projects.includes(n)){ alert('이미 등록된 프로젝트입니다.'); return; }
+  state.projects.unshift(n); state.collapsed[n]=false; save(); render();
+}
+function openNewInProject(proj){
+  openModal();
+  document.getElementById('m-project').value = proj;
+  document.getElementById('m-task').focus();
 }
 
 /* ---------- init ---------- */
