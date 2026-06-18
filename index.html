@@ -1249,7 +1249,7 @@ async function openSyncSettings(){
 
 /* ---------- init ---------- */
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
-document.addEventListener('click',()=>{ closeAssigneeMenu(); hideMenus(); });   // 바깥 클릭 시 팝업 닫기
+document.addEventListener('click',e=>{ closeAssigneeMenu(); if(!e.target.closest('.pop-wrap')) hideMenus(); });   // 메뉴 바깥 클릭 시에만 닫기
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape') return;
   if(document.getElementById('dlg-overlay').classList.contains('open')) return; // 다이얼로그는 자체 처리
