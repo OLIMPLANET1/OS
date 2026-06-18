@@ -39,6 +39,8 @@
   .brand h1{font-size:17px;font-weight:700;margin:0;letter-spacing:-.01em;outline:none;border-radius:6px;padding:1px 5px;cursor:text;}
   .brand h1:hover{background:var(--bg-muted);}
   .brand h1:focus{background:var(--bg);box-shadow:0 0 0 3px var(--accent-soft);}
+  .brand h1.static{cursor:default;}
+  .brand h1.static:hover{background:transparent;}
   .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);}
   .pmeta{font-size:12px;color:var(--text-muted);font-weight:400;margin-left:6px;}
   .plink{font-size:12px;margin-left:8px;color:var(--accent);text-decoration:none;}
@@ -301,10 +303,10 @@
 <body>
 <div class="app">
 <aside class="sidebar">
-  <div class="side-brand"><span class="dot"></span><span>스케줄</span></div>
+  <div class="side-brand"><span class="dot"></span><span>사업 1팀</span></div>
   <nav class="side-nav">
-    <button class="nav-item active" id="nav-board" onclick="setView(state.lastBoardView||'list')"><span class="ni">▦</span><span>스케줄 보드</span></button>
     <button class="nav-item" id="nav-today" onclick="setView('today')"><span class="ni">✓</span><span>오늘 업무</span></button>
+    <button class="nav-item active" id="nav-board" onclick="setView(state.lastBoardView||'list')"><span class="ni">▦</span><span>스케줄 보드</span></button>
     <button class="nav-item" id="nav-report" onclick="setView('report')"><span class="ni">▤</span><span>성과</span></button>
   </nav>
 </aside>
@@ -614,6 +616,13 @@ function updateChrome(){
   document.getElementById('nav-today').classList.toggle('active', v==='today');
   document.getElementById('nav-report').classList.toggle('active', v==='report');
   const bt=document.querySelector('.board-tools'); if(bt) bt.style.display=board?'inline-flex':'none';
+  // 상단 제목: 탭별
+  const titleEl=document.getElementById('board-title');
+  if(titleEl){
+    if(v==='today'){ titleEl.textContent='오늘 할 일'; titleEl.contentEditable='false'; titleEl.classList.add('static'); }
+    else if(v==='report'){ titleEl.textContent='성과 리포트'; titleEl.contentEditable='false'; titleEl.classList.add('static'); }
+    else { titleEl.textContent=localStorage.getItem(TITLE_KEY)||'프로젝트 스케줄 보드'; titleEl.contentEditable='true'; titleEl.classList.remove('static'); }
+  }
   const n=activeFilterCount(), b=document.getElementById('filter-badge');
   if(b){ b.style.display=n?'inline-flex':'none'; b.textContent=n||''; }
 }
@@ -943,8 +952,7 @@ function renderToday(){
   const wd=['일','월','화','수','목','금','토'][new Date().getDay()];
   const {over,today,doing,soon}=computeToday();
   let html=`<div class="today-head">
-    <h2>오늘 할 일</h2>
-    <span class="sub">${T.replace(/-/g,'. ')} (${wd})</span>
+    <span class="sub">${T.replace(/-/g,'. ')} (${wd}) 기준</span>
   </div>
   <div class="today-stats">
     <div class="stat"><div class="n">${over.length}</div><div class="l">지연</div></div>
@@ -1043,7 +1051,6 @@ function renderReport(){
     .sort((a,b)=>b.completed.length-a.completed.length || b.active.length-a.active.length);
 
   let html=`<div class="today-head">
-    <h2>성과 리포트</h2>
     <span class="sub">${fmtK(from)} ~ ${fmtK(to)}</span>
   </div>
   <div class="report-controls">
@@ -1227,6 +1234,7 @@ function loadTitle(){
   if(el) el.innerText=t; document.title=t;
 }
 function saveTitle(text){
+  if(state.view!=='list'&&state.view!=='kanban') return; // 보드에서만 제목 편집 저장
   let t=(text||'').replace(/\s+/g,' ').trim();
   if(!t){ t='프로젝트 스케줄 보드'; const el=document.getElementById('board-title'); if(el) el.innerText=t; }
   localStorage.setItem(TITLE_KEY,t); document.title=t;
