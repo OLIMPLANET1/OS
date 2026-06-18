@@ -6,88 +6,51 @@
 <title>프로젝트 스케줄 보드</title>
 <style>
   :root{
-    --bg:#ffffff;
-    --bg-soft:#fafafa;
-    --bg-muted:#f4f4f5;
-    --border:#e5e7eb;
-    --border-strong:#d4d4d8;
-    --text:#18181b;
-    --text-soft:#52525b;
-    --text-muted:#a1a1aa;
-    --accent:#2563eb;
-    --accent-soft:#eff6ff;
-    --radius:8px;
-    --shadow:0 1px 2px rgba(0,0,0,.04);
-    /* status */
-    --st-wait:#a1a1aa;
-    --st-progress:#2563eb;
-    --st-done:#16a34a;
-    /* priority */
-    --pr-high:#dc2626;
-    --pr-mid:#d97706;
-    --pr-low:#65a30d;
+    --bg:#ffffff; --bg-soft:#fafafa; --bg-muted:#f4f4f5;
+    --border:#e5e7eb; --border-strong:#d4d4d8;
+    --text:#18181b; --text-soft:#52525b; --text-muted:#a1a1aa;
+    --accent:#2563eb; --accent-soft:#eff6ff;
+    --radius:8px; --shadow:0 1px 2px rgba(0,0,0,.04);
+    --st-wait:#a1a1aa; --st-progress:#2563eb; --st-done:#16a34a;
+    --pr-high:#dc2626; --pr-mid:#d97706; --pr-low:#65a30d;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
-  body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",Roboto,"Helvetica Neue",Arial,sans-serif;
-    color:var(--text);
-    background:var(--bg);
-    font-size:14px;
-    line-height:1.5;
-    -webkit-font-smoothing:antialiased;
-  }
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",Roboto,Arial,sans-serif;
+    color:var(--text);background:var(--bg);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
   button{font-family:inherit;cursor:pointer;}
 
-  /* ---------- Header ---------- */
-  header{
-    position:sticky;top:0;z-index:20;
-    background:var(--bg);
-    border-bottom:1px solid var(--border);
-    padding:14px 24px;
-  }
+  header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 24px;}
   .header-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
   .brand{display:flex;align-items:center;gap:10px;margin-right:auto;}
   .brand h1{font-size:17px;font-weight:700;margin:0;letter-spacing:-.01em;}
   .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);}
 
   .view-toggle{display:inline-flex;background:var(--bg-muted);border-radius:var(--radius);padding:3px;}
-  .view-toggle button{
-    border:none;background:transparent;color:var(--text-soft);
-    padding:6px 16px;border-radius:6px;font-size:13px;font-weight:500;
-  }
+  .view-toggle button{border:none;background:transparent;color:var(--text-soft);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:500;}
   .view-toggle button.active{background:var(--bg);color:var(--text);box-shadow:var(--shadow);}
 
-  .btn{
-    border:1px solid var(--border-strong);background:var(--bg);color:var(--text);
-    padding:7px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;
-    display:inline-flex;align-items:center;gap:6px;
-  }
+  .btn{border:1px solid var(--border-strong);background:var(--bg);color:var(--text);padding:7px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;}
   .btn:hover{background:var(--bg-soft);}
   .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
   .btn-primary:hover{background:#1d4ed8;}
   .btn-ghost{border-color:transparent;color:var(--text-soft);}
   .btn-ghost:hover{background:var(--bg-muted);}
+  .btn-sm{padding:3px 8px;font-size:12px;}
 
   .filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;margin-top:12px;}
-  select,input[type=text],input[type=date],textarea{
-    font-family:inherit;font-size:13px;color:var(--text);
-    border:1px solid var(--border-strong);border-radius:var(--radius);
-    padding:7px 10px;background:var(--bg);outline:none;
-  }
+  select,input[type=text],input[type=date],textarea{font-family:inherit;font-size:13px;color:var(--text);border:1px solid var(--border-strong);border-radius:var(--radius);padding:7px 10px;background:var(--bg);outline:none;}
   select:focus,input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
   .search{flex:1;min-width:160px;max-width:280px;}
   .filter-label{font-size:12px;color:var(--text-muted);font-weight:500;}
 
-  /* ---------- Layout ---------- */
   main{padding:20px 24px 60px;max-width:1500px;margin:0 auto;}
 
-  /* ---------- List view ---------- */
-  .project-group{margin-bottom:26px;}
-  .project-head{
-    display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;user-select:none;
-  }
-  .project-head .chev{color:var(--text-muted);transition:transform .15s;font-size:11px;}
+  /* list */
+  .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;color:var(--text-muted);font-size:12px;}
+  .project-group{margin-bottom:22px;}
+  .project-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;user-select:none;}
+  .project-head .chev{color:var(--text-muted);transition:transform .15s;font-size:11px;width:10px;}
   .project-group.collapsed .chev{transform:rotate(-90deg);}
   .project-head .pname{font-size:15px;font-weight:700;}
   .project-head .pcount{font-size:12px;color:var(--text-muted);background:var(--bg-muted);padding:2px 8px;border-radius:20px;}
@@ -95,65 +58,77 @@
 
   .table-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
-  thead th{
-    background:var(--bg-soft);text-align:left;font-weight:600;color:var(--text-soft);
-    padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;white-space:nowrap;
-  }
-  tbody td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  thead th{background:var(--bg-soft);text-align:left;font-weight:600;color:var(--text-soft);padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;white-space:nowrap;}
+  tbody td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
   tbody tr:last-child td{border-bottom:none;}
   tbody tr:hover{background:var(--bg-soft);}
   tbody tr{cursor:pointer;}
-  td.task-name{font-weight:500;min-width:180px;}
-  td.cat,td.assignee{color:var(--text-soft);white-space:nowrap;}
-  td.dates{color:var(--text-soft);white-space:nowrap;font-variant-numeric:tabular-nums;}
+  tr.child-row{background:#fcfcfd;}
+  tr.child-row td:first-child{color:var(--text-soft);}
+  .name-cell{display:flex;align-items:center;gap:6px;min-width:240px;}
+  .twisty{width:16px;height:16px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:10px;border-radius:4px;}
+  .twisty.has:hover{background:var(--bg-muted);color:var(--text);}
+  .twisty.empty{visibility:hidden;}
+  .ttext{font-weight:500;}
+  tr.child-row .ttext{font-weight:400;}
+  .subadd{margin-left:auto;opacity:0;border:none;background:transparent;color:var(--accent);font-size:12px;padding:2px 6px;border-radius:5px;white-space:nowrap;}
+  tr:hover .subadd{opacity:1;}
+  .subadd:hover{background:var(--accent-soft);}
+  .cat,.assignee{color:var(--text-soft);white-space:nowrap;}
+  .dates{color:var(--text-soft);white-space:nowrap;font-variant-numeric:tabular-nums;}
   .doc-link{color:var(--accent);text-decoration:none;}
   .doc-link:hover{text-decoration:underline;}
+  .muted{color:var(--text-muted);}
 
-  /* badges */
+  .miniprog{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);white-space:nowrap;}
+  .bar{width:46px;height:5px;border-radius:3px;background:var(--bg-muted);overflow:hidden;}
+  .bar > i{display:block;height:100%;background:var(--st-done);}
+
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:20px;white-space:nowrap;}
   .badge .bdot{width:6px;height:6px;border-radius:50%;}
   .st-대기중{background:#f4f4f5;color:#52525b;} .st-대기중 .bdot{background:var(--st-wait);}
   .st-진행중{background:var(--accent-soft);color:#1d4ed8;} .st-진행중 .bdot{background:var(--st-progress);}
   .st-완료{background:#dcfce7;color:#15803d;} .st-완료 .bdot{background:var(--st-done);}
-
   .pr{font-size:12px;font-weight:600;white-space:nowrap;}
   .pr-높음{color:var(--pr-high);} .pr-보통{color:var(--pr-mid);} .pr-낮음{color:var(--pr-low);}
+  .who-chip{font-size:11px;color:var(--text-soft);}
 
-  /* ---------- Kanban view ---------- */
+  /* kanban */
   .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
   .kcol{background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius);padding:12px;min-height:120px;}
   .kcol-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:0 2px;}
-  .kcol-head .ktitle{font-weight:600;font-size:13px;}
   .kcol-head .kcount{font-size:11px;color:var(--text-muted);background:var(--bg-muted);padding:1px 7px;border-radius:20px;}
   .kcol.dragover{outline:2px dashed var(--accent);outline-offset:-4px;background:var(--accent-soft);}
-
-  .kcard{
-    background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
-    padding:11px 12px;margin-bottom:10px;box-shadow:var(--shadow);cursor:grab;
-  }
+  .kcard{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;margin-bottom:10px;box-shadow:var(--shadow);cursor:grab;}
   .kcard:active{cursor:grabbing;}
   .kcard.dragging{opacity:.4;}
   .kcard .kc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
   .kcard .kc-proj{font-size:11px;font-weight:600;color:#fff;padding:1px 8px;border-radius:4px;}
   .kcard .kc-name{font-weight:600;font-size:13.5px;margin-bottom:6px;line-height:1.35;}
-  .kcard .kc-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);}
+  .kcard .kc-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);}
   .kcard .kc-meta .who{display:inline-flex;align-items:center;gap:4px;}
   .avatar{width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:600;}
-
   .empty{color:var(--text-muted);text-align:center;padding:40px 0;font-size:13px;}
 
-  /* ---------- Modal ---------- */
+  /* modal */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-start;justify-content:center;z-index:50;padding:40px 16px;overflow:auto;}
   .overlay.open{display:flex;}
-  .modal{background:var(--bg);border-radius:12px;width:100%;max-width:560px;box-shadow:0 10px 40px rgba(0,0,0,.18);}
+  .modal{background:var(--bg);border-radius:12px;width:100%;max-width:600px;box-shadow:0 10px 40px rgba(0,0,0,.18);}
   .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);}
   .modal-head h2{margin:0;font-size:16px;font-weight:700;}
-  .modal-body{padding:18px 22px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .parent-banner{margin:14px 22px 0;padding:8px 12px;background:var(--accent-soft);border-radius:var(--radius);font-size:12px;color:#1d4ed8;display:none;}
+  .parent-banner.show{display:block;}
+  .modal-body{padding:16px 22px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   .modal-body .full{grid-column:1 / -1;}
   .field{display:flex;flex-direction:column;gap:5px;}
   .field label{font-size:12px;font-weight:600;color:var(--text-soft);}
   .field input,.field select,.field textarea{width:100%;}
-  .field textarea{resize:vertical;min-height:60px;}
+  .field textarea{resize:vertical;min-height:54px;}
+  .subs{margin:0 22px 4px;border-top:1px solid var(--border);padding-top:12px;}
+  .subs h3{font-size:12px;font-weight:700;color:var(--text-soft);margin:0 0 8px;display:flex;align-items:center;gap:8px;}
+  .sub-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:13px;cursor:pointer;}
+  .sub-item:hover{background:var(--bg-soft);}
+  .sub-item .s-name{flex:1;}
   .modal-foot{display:flex;align-items:center;gap:8px;padding:16px 22px;border-top:1px solid var(--border);}
   .modal-foot .spacer{margin-left:auto;}
   .icon-btn{border:none;background:transparent;color:var(--text-muted);font-size:20px;line-height:1;padding:4px;border-radius:6px;}
@@ -188,12 +163,20 @@
     </select>
     <button class="btn btn-ghost" style="margin-left:auto" onclick="exportData()">내보내기</button>
     <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">가져오기</button>
+    <button class="btn btn-ghost" onclick="resetToSheet()">시트 원본으로</button>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
   </div>
 </header>
 
 <main>
-  <div id="list-view"></div>
+  <div id="list-view">
+    <div class="toolbar">
+      <button class="btn btn-ghost btn-sm" onclick="expandAll(true)">모두 펼치기</button>
+      <button class="btn btn-ghost btn-sm" onclick="expandAll(false)">모두 접기</button>
+      <span id="count-info"></span>
+    </div>
+    <div id="list-body"></div>
+  </div>
   <div id="kanban-view" style="display:none"></div>
 </main>
 
@@ -204,6 +187,7 @@
       <h2 id="modal-title">작업 추가</h2>
       <button class="icon-btn" onclick="closeModal()">×</button>
     </div>
+    <div class="parent-banner" id="parent-banner"></div>
     <div class="modal-body">
       <div class="field full">
         <label>진행업무 *</label>
@@ -211,12 +195,13 @@
       </div>
       <div class="field">
         <label>프로젝트 *</label>
-        <input type="text" id="m-project" list="proj-list" placeholder="예: 건설 분양">
+        <input type="text" id="m-project" list="proj-list" placeholder="예: 집뷰">
         <datalist id="proj-list"></datalist>
       </div>
       <div class="field">
         <label>구분</label>
-        <input type="text" id="m-category" placeholder="예: 마케팅">
+        <input type="text" id="m-category" list="cat-list" placeholder="예: 마케팅">
+        <datalist id="cat-list"></datalist>
       </div>
       <div class="field">
         <label>담당자</label>
@@ -225,32 +210,26 @@
       </div>
       <div class="field">
         <label>우선순위</label>
-        <select id="m-priority"><option>보통</option><option>높음</option><option>낮음</option></select>
+        <select id="m-priority"><option value="">-</option><option>높음</option><option>보통</option><option>낮음</option></select>
       </div>
-      <div class="field">
-        <label>시작일</label>
-        <input type="date" id="m-start">
-      </div>
-      <div class="field">
-        <label>종료일(예상)</label>
-        <input type="date" id="m-end">
-      </div>
+      <div class="field"><label>시작일</label><input type="date" id="m-start"></div>
+      <div class="field"><label>종료일(예상)</label><input type="date" id="m-end"></div>
       <div class="field">
         <label>상태</label>
         <select id="m-status"><option>대기중</option><option>진행중</option><option>완료</option></select>
       </div>
       <div class="field">
-        <label>결과물/진행문서 (URL)</label>
+        <label>결과물/진행문서 (URL 또는 메모)</label>
         <input type="text" id="m-doc" placeholder="https://...">
       </div>
-      <div class="field full">
-        <label>진행사항</label>
-        <textarea id="m-progress"></textarea>
-      </div>
-      <div class="field full">
-        <label>이슈/확인사항</label>
-        <textarea id="m-issue"></textarea>
-      </div>
+      <div class="field full"><label>진행사항</label><textarea id="m-progress"></textarea></div>
+      <div class="field full"><label>이슈/확인사항</label><textarea id="m-issue"></textarea></div>
+    </div>
+    <div class="subs" id="subs-section" style="display:none">
+      <h3>하위 작업 <span id="subs-count" class="muted"></span>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="addSubFromModal()">＋ 하위 추가</button>
+      </h3>
+      <div id="subs-list"></div>
     </div>
     <div class="modal-foot">
       <button class="btn" id="m-delete" style="color:var(--pr-high);border-color:#fecaca;display:none" onclick="deleteTask()">삭제</button>
@@ -261,232 +240,281 @@
   </div>
 </div>
 
+<script src="data.js"></script>
 <script>
-const STORAGE_KEY = 'schedule-board-v1';
+const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['대기중','진행중','완료'];
-let state = { tasks: [], view: 'list', collapsed: {}, editingId: null };
-
-/* ---------- seed data (시트 구조 기반 샘플) ---------- */
-const SEED = [
-  {project:'건설 분양', category:'마케팅', assignee:'안나', task:'분양 홍보 페이지 기획', priority:'높음', start:'2026-06-01', end:'2026-06-20', status:'진행중', doc:'', progress:'와이어프레임 1차 완료', issue:''},
-  {project:'건설 분양', category:'고객관리', assignee:'찰스', task:'고객 DB 정리 및 마이그레이션', priority:'보통', start:'2026-06-05', end:'2026-06-30', status:'대기중', doc:'', progress:'', issue:'데이터 중복 확인 필요'},
-  {project:'건설 분양', category:'기획', assignee:'안나', task:'분양 일정표 확정', priority:'높음', start:'2026-05-20', end:'2026-06-10', status:'완료', doc:'', progress:'경영진 승인 완료', issue:''},
-  {project:'사내 운영', category:'관리', assignee:'찰스', task:'주간 회의 자료 정리', priority:'낮음', start:'2026-06-15', end:'2026-06-18', status:'진행중', doc:'', progress:'', issue:''},
-];
+let state = { tasks: [], view:'list', collapsed:{}, expanded:{}, editingId:null, pendingParent:null };
 
 /* ---------- persistence ---------- */
 function load(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){ const d = JSON.parse(raw); state.tasks = d.tasks||[]; state.collapsed = d.collapsed||{}; }
-    else { state.tasks = SEED.map((t,i)=>({id:uid(), order:i, ...t})); save(); }
-  }catch(e){ state.tasks = []; }
+    if(raw){ const d=JSON.parse(raw); state.tasks=d.tasks||[]; state.collapsed=d.collapsed||{}; state.expanded=d.expanded||{}; }
+    else { seedFromSheet(); }
+  }catch(e){ state.tasks=[]; }
 }
-function save(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks, collapsed:state.collapsed}));
+function seedFromSheet(){
+  const seed = (window.SEED_TASKS||[]).map(t=>JSON.parse(JSON.stringify(t)));
+  state.tasks = seed;
+  // 상위 항목은 기본 펼침
+  seed.forEach(t=>{ if(!t.parentId) state.expanded[t.id]=true; });
+  save();
 }
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,collapsed:state.collapsed,expanded:state.expanded})); }
 function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 /* ---------- helpers ---------- */
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function projColor(name){
-  let h=0; for(let i=0;i<name.length;i++) h=name.charCodeAt(i)+((h<<5)-h);
-  return `hsl(${Math.abs(h)%360} 55% 48%)`;
-}
-function initials(name){ return (name||'').trim().slice(0,2) || '–'; }
+function byId(id){ return state.tasks.find(t=>t.id===id); }
+function childrenOf(id){ return state.tasks.filter(t=>t.parentId===id).sort((a,b)=>(a.order||0)-(b.order||0)); }
+function topLevel(){ return state.tasks.filter(t=>!t.parentId || !byId(t.parentId)).sort((a,b)=>(a.order||0)-(b.order||0)); }
+function descendants(id){ let out=[]; childrenOf(id).forEach(c=>{ out.push(c); out=out.concat(descendants(c.id)); }); return out; }
+function projColor(name){ let h=0; name=name||''; for(let i=0;i<name.length;i++) h=name.charCodeAt(i)+((h<<5)-h); return `hsl(${Math.abs(h)%360} 55% 48%)`; }
+function initials(name){ return (name||'').trim().slice(0,2)||'–'; }
+function progressOf(id){ const d=descendants(id); if(!d.length) return null; const done=d.filter(x=>x.status==='완료').length; return {done,total:d.length,pct:Math.round(done/d.length*100)}; }
+function docCell(doc){ if(!doc) return '–'; if(/^https?:\/\//i.test(doc)) return `<a class="doc-link" href="${esc(doc)}" target="_blank" onclick="event.stopPropagation()">열기 ↗</a>`; return `<span class="muted">${esc(doc)}</span>`; }
 
-function filtered(){
-  const q = document.getElementById('search').value.trim().toLowerCase();
-  const fp = document.getElementById('f-project').value;
-  const fa = document.getElementById('f-assignee').value;
-  const fs = document.getElementById('f-status').value;
-  return state.tasks.filter(t=>{
-    if(fp && t.project!==fp) return false;
-    if(fa && t.assignee!==fa) return false;
-    if(fs && t.status!==fs) return false;
-    if(q){
-      const hay = (t.task+' '+t.project+' '+t.assignee+' '+t.category+' '+t.progress+' '+t.issue).toLowerCase();
-      if(!hay.includes(q)) return false;
+/* ---------- filtering (tree-aware) ---------- */
+function matchTask(t){
+  const q=document.getElementById('search').value.trim().toLowerCase();
+  const fp=document.getElementById('f-project').value;
+  const fa=document.getElementById('f-assignee').value;
+  const fs=document.getElementById('f-status').value;
+  if(fp && t.project!==fp) return false;
+  if(fa && !(t.assignee||'').includes(fa)) return false;
+  if(fs && t.status!==fs) return false;
+  if(q){ const hay=(t.task+' '+t.project+' '+t.assignee+' '+t.category+' '+t.progress+' '+t.issue).toLowerCase(); if(!hay.includes(q)) return false; }
+  return true;
+}
+function hasFilter(){
+  return document.getElementById('search').value.trim() || document.getElementById('f-project').value ||
+         document.getElementById('f-assignee').value || document.getElementById('f-status').value;
+}
+function visibleSet(){
+  if(!hasFilter()) return null; // null = 전체 표시
+  const vis=new Set();
+  state.tasks.forEach(t=>{
+    if(matchTask(t)){
+      vis.add(t.id);
+      // 조상 추가
+      let p=t.parentId; while(p && byId(p)){ vis.add(p); p=byId(p).parentId; }
+      // 자손 추가
+      descendants(t.id).forEach(d=>vis.add(d.id));
     }
-    return true;
   });
+  return vis;
 }
 
 function refreshFilterOptions(){
   const projects=[...new Set(state.tasks.map(t=>t.project).filter(Boolean))].sort();
-  const assignees=[...new Set(state.tasks.map(t=>t.assignee).filter(Boolean))].sort();
-  fillSelect('f-project', projects);
-  fillSelect('f-assignee', assignees);
-  document.getElementById('proj-list').innerHTML = projects.map(p=>`<option value="${esc(p)}">`).join('');
-  document.getElementById('assignee-list').innerHTML = assignees.map(a=>`<option value="${esc(a)}">`).join('');
+  const assignees=[...new Set(state.tasks.flatMap(t=>(t.assignee||'').split(',').map(s=>s.trim())).filter(Boolean))].sort();
+  const cats=[...new Set(state.tasks.map(t=>t.category).filter(Boolean))].sort();
+  fillSelect('f-project',projects); fillSelect('f-assignee',assignees);
+  document.getElementById('proj-list').innerHTML=projects.map(p=>`<option value="${esc(p)}">`).join('');
+  document.getElementById('assignee-list').innerHTML=assignees.map(a=>`<option value="${esc(a)}">`).join('');
+  document.getElementById('cat-list').innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join('');
 }
-function fillSelect(id, vals){
-  const el=document.getElementById(id); const cur=el.value;
-  el.innerHTML='<option value="">전체</option>'+vals.map(v=>`<option>${esc(v)}</option>`).join('');
-  if(vals.includes(cur)) el.value=cur;
-}
+function fillSelect(id,vals){ const el=document.getElementById(id),cur=el.value; el.innerHTML='<option value="">전체</option>'+vals.map(v=>`<option>${esc(v)}</option>`).join(''); if(vals.includes(cur)) el.value=cur; }
 
-/* ---------- views ---------- */
+/* ---------- view switch ---------- */
 function setView(v){
   state.view=v;
-  document.getElementById('tab-list').classList.toggle('active', v==='list');
-  document.getElementById('tab-kanban').classList.toggle('active', v==='kanban');
-  document.getElementById('list-view').style.display = v==='list'?'block':'none';
-  document.getElementById('kanban-view').style.display = v==='kanban'?'block':'none';
+  document.getElementById('tab-list').classList.toggle('active',v==='list');
+  document.getElementById('tab-kanban').classList.toggle('active',v==='kanban');
+  document.getElementById('list-view').style.display=v==='list'?'block':'none';
+  document.getElementById('kanban-view').style.display=v==='kanban'?'block':'none';
   render();
 }
+function render(){ refreshFilterOptions(); if(state.view==='list') renderList(); else renderKanban(); }
 
-function render(){
-  refreshFilterOptions();
-  if(state.view==='list') renderList(); else renderKanban();
-}
-
+/* ---------- list (tree) ---------- */
 function renderList(){
-  const rows = filtered();
-  const el = document.getElementById('list-view');
-  if(!rows.length){ el.innerHTML='<div class="empty">표시할 작업이 없습니다.</div>'; return; }
-  const groups={};
-  rows.forEach(t=>{ (groups[t.project]=groups[t.project]||[]).push(t); });
+  const vis=visibleSet();
+  const tops=topLevel().filter(t=>!vis||vis.has(t.id));
+  const body=document.getElementById('list-body');
+  document.getElementById('count-info').textContent = `상위 ${topLevel().length} · 전체 ${state.tasks.length}건`;
+  if(!tops.length){ body.innerHTML='<div class="empty">표시할 작업이 없습니다.</div>'; return; }
+  const groups={}; const orderKeys=[];
+  tops.forEach(t=>{ if(!groups[t.project]){groups[t.project]=[];orderKeys.push(t.project);} groups[t.project].push(t); });
   let html='';
-  Object.keys(groups).sort().forEach(proj=>{
+  orderKeys.forEach(proj=>{
     const list=groups[proj];
-    const collapsed = state.collapsed[proj] ? 'collapsed':'';
+    const collapsed=state.collapsed[proj]?'collapsed':'';
+    const total=list.reduce((n,t)=>n+1+descendants(t.id).length,0);
     html+=`<div class="project-group ${collapsed}">
       <div class="project-head" onclick="toggleGroup('${esc(proj)}')">
         <span class="chev">▼</span>
         <span class="pname" style="color:${projColor(proj)}">${esc(proj)}</span>
-        <span class="pcount">${list.length}</span>
+        <span class="pcount">${total}</span>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr>
-          <th>진행업무</th><th>구분</th><th>담당자</th><th>우선순위</th>
-          <th>시작일</th><th>종료일(예상)</th><th>상태</th><th class="hide-sm">문서</th>
-        </tr></thead><tbody>`;
-    list.forEach(t=>{
-      html+=`<tr onclick="openModal('${t.id}')">
-        <td class="task-name">${esc(t.task)}</td>
-        <td class="cat">${esc(t.category)||'–'}</td>
-        <td class="assignee">${esc(t.assignee)||'–'}</td>
-        <td><span class="pr pr-${t.priority}">${esc(t.priority)||'–'}</span></td>
-        <td class="dates">${esc(t.start)||'–'}</td>
-        <td class="dates">${esc(t.end)||'–'}</td>
-        <td><span class="badge st-${t.status}"><span class="bdot"></span>${esc(t.status)}</span></td>
-        <td class="hide-sm">${t.doc?`<a class="doc-link" href="${esc(t.doc)}" target="_blank" onclick="event.stopPropagation()">열기 ↗</a>`:'–'}</td>
-      </tr>`;
-    });
+        <thead><tr><th>진행업무</th><th>구분</th><th>담당자</th><th>우선순위</th><th>시작일</th><th>종료일</th><th>상태</th><th class="hide-sm">문서</th></tr></thead>
+        <tbody>`;
+    list.forEach(t=>{ html+=renderRow(t,0,vis); });
     html+=`</tbody></table></div></div>`;
   });
-  el.innerHTML=html;
+  body.innerHTML=html;
 }
+function renderRow(t,depth,vis){
+  const kids=childrenOf(t.id).filter(c=>!vis||vis.has(c.id));
+  const open=state.expanded[t.id];
+  const prog=progressOf(t.id);
+  let twisty;
+  if(kids.length) twisty=`<span class="twisty has" onclick="event.stopPropagation();toggleExpand('${t.id}')">${open?'▼':'▶'}</span>`;
+  else twisty=`<span class="twisty empty">•</span>`;
+  let html=`<tr class="${depth?'child-row':''}" onclick="openModal('${t.id}')">
+    <td><div class="name-cell" style="padding-left:${depth*18}px">
+      ${twisty}<span class="ttext">${esc(t.task)}</span>
+      ${prog?`<span class="miniprog">${prog.done}/${prog.total}<span class="bar"><i style="width:${prog.pct}%"></i></span></span>`:''}
+      <button class="subadd" onclick="event.stopPropagation();openSub('${t.id}')">＋ 하위</button>
+    </div></td>
+    <td class="cat">${esc(t.category)||'–'}</td>
+    <td class="assignee">${esc(t.assignee)||'–'}</td>
+    <td>${t.priority?`<span class="pr pr-${t.priority}">${esc(t.priority)}</span>`:'–'}</td>
+    <td class="dates">${esc(t.start)||'–'}</td>
+    <td class="dates">${esc(t.end)||'–'}</td>
+    <td><span class="badge st-${t.status||'대기중'}"><span class="bdot"></span>${esc(t.status||'대기중')}</span></td>
+    <td class="hide-sm">${docCell(t.doc)}</td>
+  </tr>`;
+  if(kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
+  return html;
+}
+function toggleGroup(p){ state.collapsed[p]=!state.collapsed[p]; save(); renderList(); }
+function toggleExpand(id){ state.expanded[id]=!state.expanded[id]; save(); renderList(); }
+function expandAll(v){ state.tasks.forEach(t=>{ if(descendants(t.id).length) state.expanded[t.id]=v; }); save(); renderList(); }
 
-function toggleGroup(proj){ state.collapsed[proj]=!state.collapsed[proj]; save(); renderList(); }
-
+/* ---------- kanban (top-level cards) ---------- */
 function renderKanban(){
-  const rows = filtered();
-  const el = document.getElementById('kanban-view');
+  const vis=visibleSet();
+  const tops=topLevel().filter(t=>!vis||vis.has(t.id));
   let html='<div class="kanban">';
   STATUSES.forEach(st=>{
-    const list = rows.filter(t=>t.status===st).sort((a,b)=>(a.order||0)-(b.order||0));
-    html+=`<div class="kcol" data-status="${st}"
-        ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${st}')">
+    const list=tops.filter(t=>(t.status||'대기중')===st);
+    html+=`<div class="kcol" data-status="${st}" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${st}')">
       <div class="kcol-head"><span class="badge st-${st}"><span class="bdot"></span>${st}</span><span class="kcount">${list.length}</span></div>`;
     list.forEach(t=>{
-      html+=`<div class="kcard" draggable="true" data-id="${t.id}"
-          ondragstart="onDragStart(event,'${t.id}')" ondragend="onDragEnd(event)" onclick="openModal('${t.id}')">
+      const prog=progressOf(t.id);
+      html+=`<div class="kcard" draggable="true" data-id="${t.id}" ondragstart="onDragStart(event,'${t.id}')" ondragend="onDragEnd(event)" onclick="openModal('${t.id}')">
         <div class="kc-top">
           <span class="kc-proj" style="background:${projColor(t.project)}">${esc(t.project)}</span>
-          <span class="pr pr-${t.priority}">${esc(t.priority)||''}</span>
+          ${t.priority?`<span class="pr pr-${t.priority}">${esc(t.priority)}</span>`:''}
         </div>
         <div class="kc-name">${esc(t.task)}</div>
         <div class="kc-meta">
           ${t.assignee?`<span class="who"><span class="avatar">${esc(initials(t.assignee))}</span>${esc(t.assignee)}</span>`:''}
           ${t.end?`<span>~ ${esc(t.end)}</span>`:''}
+          ${prog?`<span class="miniprog">하위 ${prog.done}/${prog.total}<span class="bar"><i style="width:${prog.pct}%"></i></span></span>`:''}
         </div>
       </div>`;
     });
     html+=`</div>`;
   });
   html+='</div>';
-  el.innerHTML=html;
+  document.getElementById('kanban-view').innerHTML=html;
 }
-
-/* ---------- drag & drop ---------- */
 let dragId=null;
 function onDragStart(e,id){ dragId=id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
 function onDragEnd(e){ e.currentTarget.classList.remove('dragging'); dragId=null; }
 function onDragOver(e){ e.preventDefault(); e.currentTarget.classList.add('dragover'); }
 function onDragLeave(e){ e.currentTarget.classList.remove('dragover'); }
-function onDrop(e,status){
-  e.preventDefault(); e.currentTarget.classList.remove('dragover');
-  const t = state.tasks.find(x=>x.id===dragId);
-  if(t && t.status!==status){ t.status=status; t.order=Date.now(); save(); renderKanban(); }
-}
+function onDrop(e,status){ e.preventDefault(); e.currentTarget.classList.remove('dragover'); const t=byId(dragId); if(t&&t.status!==status){ t.status=status; save(); renderKanban(); } }
 
 /* ---------- modal ---------- */
 function openModal(id){
-  state.editingId = id||null;
-  const t = id ? state.tasks.find(x=>x.id===id) : null;
-  document.getElementById('modal-title').textContent = t?'작업 편집':'작업 추가';
-  document.getElementById('m-delete').style.display = t?'inline-flex':'none';
-  const v=(f,val)=>document.getElementById(f).value = val||'';
-  v('m-task',t?.task); v('m-project',t?.project); v('m-category',t?.category);
-  v('m-assignee',t?.assignee); v('m-priority',t?.priority||'보통');
-  v('m-start',t?.start); v('m-end',t?.end); v('m-status',t?.status||'대기중');
+  state.editingId=id||null; state.pendingParent=null;
+  const t=id?byId(id):null;
+  document.getElementById('modal-title').textContent=t?'작업 편집':'작업 추가';
+  document.getElementById('m-delete').style.display=t?'inline-flex':'none';
+  const pb=document.getElementById('parent-banner');
+  const parent=t&&t.parentId?byId(t.parentId):null;
+  if(parent){ pb.classList.add('show'); pb.innerHTML=`상위 작업: <b>${esc(parent.task)}</b> (${esc(parent.project)})`; }
+  else pb.classList.remove('show');
+  const v=(f,val)=>document.getElementById(f).value=val||'';
+  v('m-task',t?.task); v('m-project',t?.project); v('m-category',t?.category); v('m-assignee',t?.assignee);
+  v('m-priority',t?.priority||''); v('m-start',t?.start); v('m-end',t?.end); v('m-status',t?.status||'대기중');
   v('m-doc',t?.doc); v('m-progress',t?.progress); v('m-issue',t?.issue);
+  renderSubsSection(id);
   document.getElementById('overlay').classList.add('open');
   setTimeout(()=>document.getElementById('m-task').focus(),50);
 }
-function closeModal(){ document.getElementById('overlay').classList.remove('open'); state.editingId=null; }
-
+function openSub(parentId){
+  const parent=byId(parentId);
+  state.editingId=null; state.pendingParent=parentId;
+  document.getElementById('modal-title').textContent='하위 작업 추가';
+  document.getElementById('m-delete').style.display='none';
+  const pb=document.getElementById('parent-banner');
+  pb.classList.add('show'); pb.innerHTML=`상위 작업: <b>${esc(parent.task)}</b> (${esc(parent.project)})`;
+  const v=(f,val)=>document.getElementById(f).value=val||'';
+  v('m-task',''); v('m-project',parent.project); v('m-category',parent.category); v('m-assignee',parent.assignee);
+  v('m-priority',''); v('m-start',''); v('m-end',''); v('m-status','대기중'); v('m-doc',''); v('m-progress',''); v('m-issue','');
+  document.getElementById('subs-section').style.display='none';
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('m-task').focus(),50);
+}
+function addSubFromModal(){ if(state.editingId) openSub(state.editingId); }
+function renderSubsSection(id){
+  const sec=document.getElementById('subs-section');
+  if(!id){ sec.style.display='none'; return; }
+  const kids=childrenOf(id);
+  sec.style.display='block';
+  document.getElementById('subs-count').textContent=`(${kids.length})`;
+  const el=document.getElementById('subs-list');
+  el.innerHTML = kids.length ? kids.map(c=>`<div class="sub-item" onclick="openModal('${c.id}')">
+      <span class="badge st-${c.status||'대기중'}"><span class="bdot"></span>${esc(c.status||'대기중')}</span>
+      <span class="s-name">${esc(c.task)}</span>
+      <span class="who-chip">${esc(c.assignee)||''}</span>
+    </div>`).join('') : '<div class="muted" style="font-size:12px;padding:4px 8px">하위 작업이 없습니다.</div>';
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); state.editingId=null; state.pendingParent=null; }
 function saveTask(){
   const g=f=>document.getElementById(f).value.trim();
   const task=g('m-task'), project=g('m-project');
   if(!task||!project){ alert('진행업무와 프로젝트는 필수입니다.'); return; }
-  const data={ task, project, category:g('m-category'), assignee:g('m-assignee'),
-    priority:g('m-priority'), start:g('m-start'), end:g('m-end'), status:g('m-status'),
-    doc:g('m-doc'), progress:g('m-progress'), issue:g('m-issue') };
-  if(state.editingId){
-    const t=state.tasks.find(x=>x.id===state.editingId); Object.assign(t,data);
-  }else{
-    state.tasks.push({id:uid(), order:Date.now(), ...data});
+  const data={ task,project,category:g('m-category'),assignee:g('m-assignee'),priority:g('m-priority'),
+    start:g('m-start'),end:g('m-end'),status:g('m-status'),doc:g('m-doc'),progress:g('m-progress'),issue:g('m-issue') };
+  if(state.editingId){ Object.assign(byId(state.editingId),data); }
+  else{
+    const t={ id:uid(), parentId:state.pendingParent||null, order:Date.now(), ...data };
+    state.tasks.push(t);
+    if(t.parentId) state.expanded[t.parentId]=true;
   }
   save(); closeModal(); render();
 }
 function deleteTask(){
   if(!state.editingId) return;
-  if(!confirm('이 작업을 삭제할까요?')) return;
-  state.tasks=state.tasks.filter(x=>x.id!==state.editingId);
+  const kids=descendants(state.editingId);
+  const msg=kids.length?`이 작업과 하위 ${kids.length}건을 모두 삭제할까요?`:'이 작업을 삭제할까요?';
+  if(!confirm(msg)) return;
+  const ids=new Set([state.editingId,...kids.map(k=>k.id)]);
+  state.tasks=state.tasks.filter(t=>!ids.has(t.id));
   save(); closeModal(); render();
 }
 
-/* ---------- import / export ---------- */
+/* ---------- import / export / reset ---------- */
 function exportData(){
   const blob=new Blob([JSON.stringify({tasks:state.tasks},null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='schedule-'+new Date().toISOString().slice(0,10)+'.json';
-  a.click(); URL.revokeObjectURL(a.href);
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='schedule-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); URL.revokeObjectURL(a.href);
 }
 function importData(ev){
   const file=ev.target.files[0]; if(!file) return;
   const r=new FileReader();
-  r.onload=()=>{
-    try{
-      const d=JSON.parse(r.result);
-      if(!Array.isArray(d.tasks)) throw 0;
-      state.tasks=d.tasks.map(t=>({id:t.id||uid(), order:t.order||Date.now(), ...t}));
+  r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!Array.isArray(d.tasks)) throw 0;
+      state.tasks=d.tasks.map(t=>({id:t.id||uid(),order:t.order||Date.now(),parentId:t.parentId||null,...t}));
       save(); render(); alert('가져오기 완료 ('+state.tasks.length+'건)');
-    }catch(e){ alert('올바른 JSON 파일이 아닙니다.'); }
-    ev.target.value='';
-  };
+    }catch(e){ alert('올바른 JSON 파일이 아닙니다.'); } ev.target.value=''; };
   r.readAsText(file);
+}
+function resetToSheet(){
+  if(!confirm('현재 데이터를 지우고 구글 시트 원본 데이터로 초기화할까요?')) return;
+  state.collapsed={}; state.expanded={}; seedFromSheet(); render();
 }
 
 /* ---------- init ---------- */
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
-load();
-render();
+load(); render();
 </script>
 </body>
 </html>
