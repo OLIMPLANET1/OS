@@ -20,6 +20,19 @@
     color:var(--text);background:var(--bg);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
   button{font-family:inherit;cursor:pointer;}
 
+  /* 사이드바 레이아웃 */
+  .app{display:flex;align-items:flex-start;min-height:100vh;}
+  .sidebar{width:208px;flex:none;align-self:stretch;background:var(--bg-soft);border-right:1px solid var(--border);padding:16px 12px;position:sticky;top:0;height:100vh;}
+  .side-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;padding:6px 8px 18px;letter-spacing:-.01em;}
+  .side-nav{display:flex;flex-direction:column;gap:2px;}
+  .nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:none;background:transparent;color:var(--text-soft);font-size:13.5px;font-weight:500;padding:9px 10px;border-radius:8px;cursor:pointer;}
+  .nav-item:hover{background:var(--bg-muted);color:var(--text);}
+  .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
+  .nav-item .ni{width:18px;text-align:center;color:var(--text-muted);font-size:13px;}
+  .nav-item.active .ni{color:var(--accent);}
+  .app-main{flex:1;min-width:0;}
+  .board-tools{display:inline-flex;align-items:center;gap:8px;}
+
   header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 24px;}
   .header-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
   .brand{display:flex;align-items:center;gap:10px;margin-right:auto;}
@@ -276,34 +289,51 @@
     .modal-body{grid-template-columns:1fr;}
     .hide-sm{display:none;}
   }
+  @media(max-width:720px){
+    .app{flex-direction:column;}
+    .sidebar{width:auto;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:10px 14px;}
+    .side-brand{padding:0;}
+    .side-nav{flex-direction:row;gap:4px;}
+    .nav-item{padding:7px 10px;}
+  }
 </style>
 </head>
 <body>
+<div class="app">
+<aside class="sidebar">
+  <div class="side-brand"><span class="dot"></span><span>스케줄</span></div>
+  <nav class="side-nav">
+    <button class="nav-item active" id="nav-board" onclick="setView(state.lastBoardView||'list')"><span class="ni">▦</span><span>스케줄 보드</span></button>
+    <button class="nav-item" id="nav-today" onclick="setView('today')"><span class="ni">✓</span><span>오늘 업무</span></button>
+    <button class="nav-item" id="nav-report" onclick="setView('report')"><span class="ni">▤</span><span>성과</span></button>
+  </nav>
+</aside>
+<div class="app-main">
 <header>
   <div class="header-row">
     <div class="brand"><span class="dot"></span><h1 id="board-title" contenteditable="true" spellcheck="false" title="클릭하여 제목 수정"
       onblur="saveTitle(this.innerText)"
       onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">프로젝트 스케줄 보드</h1></div>
     <div class="toolbar-right">
-      <button class="vtab" id="tab-today" onclick="setView('today')">오늘</button>
-      <button class="vtab" id="tab-report" onclick="setView('report')">성과</button>
-      <div class="view-toggle">
-        <button id="tab-list" class="active" onclick="setView('list')">테이블 뷰</button>
-        <button id="tab-kanban" onclick="setView('kanban')">칸반 뷰</button>
-      </div>
-      <div class="pop-wrap">
-        <button class="icon-tool" id="filter-btn" title="정렬 및 필터" onclick="toggleFilterMenu(event)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
-          <span class="dot-badge" id="filter-badge" style="display:none"></span>
-        </button>
-        <div class="pop-menu pm-filter" id="filter-menu"></div>
-      </div>
-      <div class="pop-wrap search-wrap">
-        <button class="icon-tool" id="search-btn" title="검색" onclick="toggleSearch()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </button>
-        <input type="text" id="search" class="search-input" placeholder="클라이언트·작업·담당자 검색…" oninput="state.search=this.value;render()">
-      </div>
+      <span class="board-tools">
+        <div class="view-toggle">
+          <button id="tab-list" class="active" onclick="setView('list')">테이블 뷰</button>
+          <button id="tab-kanban" onclick="setView('kanban')">칸반 뷰</button>
+        </div>
+        <div class="pop-wrap">
+          <button class="icon-tool" id="filter-btn" title="정렬 및 필터" onclick="toggleFilterMenu(event)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+            <span class="dot-badge" id="filter-badge" style="display:none"></span>
+          </button>
+          <div class="pop-menu pm-filter" id="filter-menu"></div>
+        </div>
+        <div class="pop-wrap search-wrap">
+          <button class="icon-tool" id="search-btn" title="검색" onclick="toggleSearch()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <input type="text" id="search" class="search-input" placeholder="클라이언트·작업·담당자 검색…" oninput="state.search=this.value;render()">
+        </div>
+      </span>
       <div class="pop-wrap">
         <button class="btn btn-primary" onclick="toggleCreateMenu(event)">＋ 새로 만들기</button>
         <div class="pop-menu" id="create-menu">
@@ -341,6 +371,8 @@
   </div>
   <div id="kanban-view" style="display:none"></div>
 </main>
+</div><!-- /app-main -->
+</div><!-- /app -->
 
 <div id="assignee-pop"></div>
 
@@ -575,9 +607,13 @@ function hasFilter(){ return (state.search||'').trim() || state.filterProject ||
 function activeFilterCount(){ let n=0; if(state.filterProject)n++; if(state.filterAssignee)n++; if(state.sort!=='priority')n++; return n; }
 /* ---------- 상단 컨트롤(뷰 active / 필터 배지) ---------- */
 function updateChrome(){
-  ['kanban','list'].forEach(v=>{ const el=document.getElementById('tab-'+v); if(el) el.classList.toggle('active',state.view===v); });
-  document.getElementById('tab-today').classList.toggle('active',state.view==='today');
-  document.getElementById('tab-report').classList.toggle('active',state.view==='report');
+  const v=state.view, board=(v==='list'||v==='kanban');
+  document.getElementById('tab-list').classList.toggle('active', v==='list');
+  document.getElementById('tab-kanban').classList.toggle('active', v==='kanban');
+  document.getElementById('nav-board').classList.toggle('active', board);
+  document.getElementById('nav-today').classList.toggle('active', v==='today');
+  document.getElementById('nav-report').classList.toggle('active', v==='report');
+  const bt=document.querySelector('.board-tools'); if(bt) bt.style.display=board?'inline-flex':'none';
   const n=activeFilterCount(), b=document.getElementById('filter-badge');
   if(b){ b.style.display=n?'inline-flex':'none'; b.textContent=n||''; }
 }
