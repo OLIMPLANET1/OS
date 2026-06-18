@@ -224,6 +224,14 @@
   .icon-btn{border:none;background:transparent;color:var(--text-muted);font-size:20px;line-height:1;padding:4px;border-radius:6px;}
   .icon-btn:hover{background:var(--bg-muted);color:var(--text);}
 
+  /* 공용 다이얼로그 */
+  .modal.dlg{max-width:400px;}
+  .dlg-body{padding:22px 22px 8px;}
+  .dlg-msg{font-size:14px;color:var(--text);line-height:1.5;white-space:pre-line;margin-bottom:14px;font-weight:500;}
+  .dlg-input{width:100%;font-size:14px;padding:9px 12px;}
+  .dlg-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .dlg-foot{display:flex;justify-content:flex-end;gap:8px;padding:16px 22px;}
+
   @media(max-width:820px){
     .kanban{grid-template-columns:1fr;}
     .modal-body{grid-template-columns:1fr;}
@@ -276,6 +284,20 @@
 </main>
 
 <div id="assignee-pop"></div>
+
+<!-- 공용 다이얼로그 -->
+<div class="overlay" id="dlg-overlay">
+  <div class="modal dlg">
+    <div class="dlg-body">
+      <div class="dlg-msg" id="dlg-msg"></div>
+      <input type="text" id="dlg-input" class="dlg-input">
+    </div>
+    <div class="dlg-foot">
+      <button class="btn" id="dlg-cancel">취소</button>
+      <button class="btn btn-primary" id="dlg-ok">확인</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal -->
 <div class="overlay" id="overlay">
@@ -342,6 +364,30 @@
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['대기','진행중','완료'];
 let state = { tasks: [], projects: [], people: [], peopleColors:{}, projectLinks:{}, view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'', todayDone:{} };
+
+/* ---------- 공용 다이얼로그 (prompt/confirm/alert 대체) ---------- */
+function openDlg(message, withInput, def, okLabel, showCancel){
+  return new Promise(resolve=>{
+    const ov=document.getElementById('dlg-overlay');
+    document.getElementById('dlg-msg').textContent=message;
+    const inp=document.getElementById('dlg-input');
+    inp.style.display=withInput?'block':'none';
+    if(withInput) inp.value=def||'';
+    const ok=document.getElementById('dlg-ok'), cancel=document.getElementById('dlg-cancel');
+    ok.textContent=okLabel||'확인';
+    cancel.style.display=showCancel?'inline-flex':'none';
+    ov.classList.add('open');
+    if(withInput) setTimeout(()=>{ inp.focus(); inp.select(); },40); else setTimeout(()=>ok.focus(),40);
+    function done(val){ ov.classList.remove('open'); ok.onclick=cancel.onclick=ov.onclick=inp.onkeydown=null; resolve(val); }
+    ok.onclick=()=>done(withInput?inp.value:true);
+    cancel.onclick=()=>done(withInput?null:false);
+    ov.onclick=e=>{ if(e.target===ov) done(withInput?null:false); };
+    inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); done(inp.value); } else if(e.key==='Escape'){ e.preventDefault(); done(null); } };
+  });
+}
+function uiPrompt(message, def){ return openDlg(message, true, def, '확인', true); }
+function uiConfirm(message){ return openDlg(message, false, '', '확인', true); }
+function uiAlert(message){ return openDlg(message, false, '', '확인', false); }
 
 /* ---------- persistence ---------- */
 function load(){
@@ -431,9 +477,9 @@ function docCellEditable(t){
   const btn = `<button class="doc-edit" title="결과물/문서 링크" onclick="event.stopPropagation();editDoc('${t.id}')">${t.doc?'✎':'＋ 링크'}</button>`;
   return `<span class="doc-cell">${link}${btn}</span>`;
 }
-function editDoc(id){
+async function editDoc(id){
   const t=byId(id); if(!t) return;
-  const u=prompt('결과물/문서 링크(URL)를 입력하세요. (비우면 삭제)', t.doc||'');
+  const u=await uiPrompt('결과물/문서 링크(URL)를 입력하세요. (비우면 삭제)', t.doc||'');
   if(u===null) return;
   t.doc=u.trim(); save(); renderList();
 }
@@ -652,8 +698,9 @@ function toggleAssignee(id,person,on){
   t.assignee=sel.join(', '); save();
   renderStatusTabs(); renderView();
 }
-function addPersonTo(id){
-  const name=prompt('새 담당자 이름'); if(name===null) return;
+async function addPersonTo(id){
+  const name=await uiPrompt('새 담당자 이름','');
+  if(name===null) return;
   const n=name.trim(); if(!n) return;
   if(!state.people.includes(n)) state.people.push(n);
   ensurePersonColor(n);
@@ -674,13 +721,13 @@ function plinkHtml(proj){
   const edit = `<button class="plink-edit" title="프로젝트 링크" onclick="event.stopPropagation();editProjectLink('${esc(proj)}')">${url?'✎':'🔗 링크'}</button>`;
   return link+edit;
 }
-function renameProject(old){
-  const name=prompt('프로젝트 이름을 수정하세요.', old);
+async function renameProject(old){
+  const name=await uiPrompt('프로젝트 이름을 수정하세요.', old);
   if(name===null) return;
   const n=name.trim();
   if(!n || n===old) return;
   const merge = (state.projects.includes(n) || state.tasks.some(t=>t.project===n));
-  if(merge && !confirm(`'${n}' 프로젝트가 이미 있습니다. 합칠까요?`)) return;
+  if(merge && !(await uiConfirm(`'${n}' 프로젝트가 이미 있습니다. 합칠까요?`))) return;
   state.tasks.forEach(t=>{ if(t.project===old) t.project=n; });
   state.projects = [...new Set(state.projects.map(p=>p===old?n:p))];
   if(!state.projects.includes(n)) state.projects.push(n);
@@ -688,9 +735,9 @@ function renameProject(old){
   if(old in state.collapsed){ state.collapsed[n]=state.collapsed[old]; delete state.collapsed[old]; }
   save(); render();
 }
-function editProjectLink(proj){
+async function editProjectLink(proj){
   const cur=state.projectLinks[proj]||'';
-  const u=prompt('프로젝트 링크(URL)를 입력하세요. (비우면 삭제)', cur);
+  const u=await uiPrompt('프로젝트 링크(URL)를 입력하세요. (비우면 삭제)', cur);
   if(u===null) return;
   const url=u.trim();
   if(url) state.projectLinks[proj]=url; else delete state.projectLinks[proj];
@@ -986,8 +1033,9 @@ function getModalAssignees(){
   return [...document.querySelectorAll('#m-assignee-box input:checked')].map(c=>c.value)
     .sort((a,b)=>order.indexOf(a)-order.indexOf(b)).join(', ');
 }
-function addPersonModal(){
-  const name=prompt('새 담당자 이름'); if(name===null) return;
+async function addPersonModal(){
+  const name=await uiPrompt('새 담당자 이름','');
+  if(name===null) return;
   const n=name.trim(); if(!n) return;
   if(!state.people.includes(n)) state.people.push(n);
   ensurePersonColor(n);
@@ -1012,7 +1060,7 @@ function closeModal(){ document.getElementById('overlay').classList.remove('open
 function saveTask(){
   const g=f=>document.getElementById(f).value.trim();
   const task=g('m-task'), project=g('m-project');
-  if(!task||!project){ alert('진행업무와 프로젝트는 필수입니다.'); return; }
+  if(!task||!project){ uiAlert('진행업무와 프로젝트는 필수입니다.'); return; }
   const data={ task,project,category:g('m-category'),assignee:getModalAssignees(),priority:g('m-priority'),
     start:g('m-start'),end:g('m-end'),status:g('m-status'),doc:g('m-doc'),progress:g('m-progress'),issue:g('m-issue') };
   if(state.editingId){ Object.assign(byId(state.editingId),data); }
@@ -1023,11 +1071,11 @@ function saveTask(){
   }
   save(); closeModal(); render();
 }
-function deleteTask(){
+async function deleteTask(){
   if(!state.editingId) return;
   const kids=descendants(state.editingId);
   const msg=kids.length?`이 작업과 하위 ${kids.length}건을 모두 삭제할까요?`:'이 작업을 삭제할까요?';
-  if(!confirm(msg)) return;
+  if(!(await uiConfirm(msg))) return;
   const ids=new Set([state.editingId,...kids.map(k=>k.id)]);
   state.tasks=state.tasks.filter(t=>!ids.has(t.id));
   save(); closeModal(); render();
@@ -1044,22 +1092,22 @@ function importData(ev){
   const r=new FileReader();
   r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!Array.isArray(d.tasks)) throw 0;
       state.tasks=d.tasks.map(t=>({id:t.id||uid(),order:t.order||Date.now(),parentId:t.parentId||null,...t}));
-      save(); render(); alert('가져오기 완료 ('+state.tasks.length+'건)');
-    }catch(e){ alert('올바른 JSON 파일이 아닙니다.'); } ev.target.value=''; };
+      save(); render(); uiAlert('가져오기 완료 ('+state.tasks.length+'건)');
+    }catch(e){ uiAlert('올바른 JSON 파일이 아닙니다.'); } ev.target.value=''; };
   r.readAsText(file);
 }
-function resetToSheet(){
-  if(!confirm('현재 데이터를 지우고 구글 시트 원본 데이터로 초기화할까요?')) return;
+async function resetToSheet(){
+  if(!(await uiConfirm('현재 데이터를 지우고 구글 시트 원본 데이터로 초기화할까요?'))) return;
   state.collapsed={}; state.expanded={}; state.projects=[]; seedFromSheet(); state.projects=projectsFromTasks(); save(); render();
 }
 
 /* ---------- 프로젝트 등록 ---------- */
-function addProject(){
-  const name=prompt('새 프로젝트 이름을 입력하세요');
+async function addProject(){
+  const name=await uiPrompt('새 프로젝트 이름을 입력하세요','');
   if(name===null) return;
   const n=name.trim();
   if(!n) return;
-  if(state.projects.includes(n)){ alert('이미 등록된 프로젝트입니다.'); return; }
+  if(state.projects.includes(n)){ uiAlert('이미 등록된 프로젝트입니다.'); return; }
   state.projects.unshift(n); state.collapsed[n]=false; save(); render();
 }
 function openNewInProject(proj){
@@ -1116,14 +1164,14 @@ function pullFromSheet(opts){
     save({noSync:true}); render(); setSyncStatus('시트에서 불러옴 · '+nowt());
   }).catch(()=>setSyncStatus('불러오기 실패 (URL/배포 확인)'));
 }
-function openSyncSettings(){
+async function openSyncSettings(){
   const cur=getSyncUrl();
-  const u=prompt('Google Apps Script 웹앱 URL( .../exec )을 붙여넣으세요.\n(비우고 확인하면 공유 해제)', cur);
+  const u=await uiPrompt('Google Apps Script 웹앱 URL( .../exec )을 붙여넣으세요.\n(비우고 확인하면 공유 해제)', cur);
   if(u===null) return;
   const url=u.trim();
   if(!url){ localStorage.removeItem(SYNC_KEY); updateSyncUI(); setSyncStatus('공유 해제됨'); return; }
   if(!/^https:\/\/script\.google\.com\/macros\/.+\/exec\b/.test(url)){
-    if(!confirm('일반적인 Apps Script 웹앱 주소(.../exec) 형식이 아닙니다. 그래도 연결할까요?')) return;
+    if(!(await uiConfirm('일반적인 Apps Script 웹앱 주소(.../exec) 형식이 아닙니다. 그래도 연결할까요?'))) return;
   }
   localStorage.setItem(SYNC_KEY,url); updateSyncUI(); setSyncStatus('연결 확인 중…');
   pullFromSheet({seedIfEmpty:true});
@@ -1132,7 +1180,11 @@ function openSyncSettings(){
 /* ---------- init ---------- */
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
 document.addEventListener('click',()=>closeAssigneeMenu());   // 팝오버 바깥 클릭 시 닫기
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeAssigneeMenu(); closeModal(); } });
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  if(document.getElementById('dlg-overlay').classList.contains('open')) return; // 다이얼로그는 자체 처리
+  closeAssigneeMenu(); closeModal();
+});
 loadTitle(); load(); updateSyncUI(); setView(state.view);
 if(getSyncUrl()) pullFromSheet();   // 공유 연결돼 있으면 시트 데이터로 갱신
 </script>
