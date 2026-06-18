@@ -149,6 +149,20 @@
   .todo-proj{background:var(--bg-muted);color:var(--text-soft);padding:0 7px;border-radius:4px;font-weight:600;}
   .todo-due strong{color:var(--text);font-weight:600;}
   .empty-today{color:var(--text-muted);text-align:center;padding:54px 0;font-size:14px;}
+
+  /* report view */
+  .report-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px;color:var(--text-soft);font-size:13px;}
+  .report-controls .seg{display:inline-flex;gap:4px;flex-wrap:wrap;margin-left:6px;}
+  .rp-person{border:1px solid var(--border);border-radius:8px;margin-bottom:14px;overflow:hidden;}
+  .rp-head{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg-soft);font-weight:700;font-size:14px;border-bottom:1px solid var(--border);}
+  .rp-head .cnt{margin-left:auto;font-size:12px;font-weight:500;color:var(--text-muted);}
+  .rp-sub{font-size:11px;color:var(--text-muted);font-weight:700;padding:8px 14px 2px;}
+  .rp-item{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--border);font-size:13px;}
+  .rp-item .mark{width:14px;flex:none;color:var(--text-muted);text-align:center;font-weight:700;}
+  .rp-item .rp-name{flex:1;min-width:0;cursor:pointer;}
+  .rp-item .rp-name:hover{text-decoration:underline;}
+  .rp-item .rp-proj{font-size:11px;color:var(--text-soft);background:var(--bg-muted);padding:0 7px;border-radius:4px;font-weight:600;white-space:nowrap;}
+  .rp-item .rp-date{font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
   .pr{font-size:12px;font-weight:600;white-space:nowrap;color:var(--text-soft);}
   .pr-높음,.pr-보통,.pr-낮음{color:var(--text-soft);}
   .who-chip{font-size:11px;color:var(--text-soft);}
@@ -233,6 +247,7 @@
 
 <main>
   <div id="today-view"></div>
+  <div id="report-view" style="display:none"></div>
   <div id="list-view" style="display:none">
     <div class="toolbar">
       <button class="btn btn-ghost btn-sm" onclick="expandAll(true)">모두 펼치기</button>
@@ -310,7 +325,7 @@
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['대기','진행중','완료'];
-let state = { tasks: [], projects: [], people: [], view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false };
+let state = { tasks: [], projects: [], people: [], view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'' };
 
 /* ---------- persistence ---------- */
 function load(){
@@ -389,18 +404,19 @@ function renderStatusTabs(){
   STATUSES.forEach(s=>counts[s]=state.tasks.filter(t=>(t.status||'대기')===s).length);
   const tabs=[['','전체'],...STATUSES.map(s=>[s,s])];
   const statusBtns = tabs.map(([v,label])=>{
-    const active = state.view!=='today' && state.statusTab===v;
+    const active = state.view!=='today' && state.view!=='report' && state.statusTab===v;
     return `<button class="${active?'active':''}" onclick="selectTopTab('status','${v}')">${label}<span class="cnt">${counts[v]}</span></button>`;
   }).join('');
   const td=computeToday();
-  const todayActive = state.view==='today';
-  const todayBtn = `<button class="${todayActive?'active':''}" style="margin-left:auto" onclick="selectTopTab('today')">오늘 할 일<span class="cnt">${td.over.length+td.today.length+td.soon.length}</span></button>`;
-  document.getElementById('status-tabs').innerHTML = statusBtns + todayBtn;
+  const todayBtn = `<button class="${state.view==='today'?'active':''}" style="margin-left:auto" onclick="selectTopTab('today')">오늘 할 일<span class="cnt">${td.over.length+td.today.length+td.soon.length}</span></button>`;
+  const reportBtn = `<button class="${state.view==='report'?'active':''}" onclick="selectTopTab('report')">성과</button>`;
+  document.getElementById('status-tabs').innerHTML = statusBtns + todayBtn + reportBtn;
 }
 function selectTopTab(kind,val){
   if(kind==='today'){ setView('today'); return; }
+  if(kind==='report'){ setView('report'); return; }
   state.statusTab=val;
-  if(state.view==='today'){ setView(state.lastBoardView||'list'); }
+  if(state.view==='today'||state.view==='report'){ setView(state.lastBoardView||'list'); }
   else { render(); }
 }
 function visibleSet(){
@@ -432,16 +448,22 @@ function fillSelect(id,vals){ const el=document.getElementById(id),cur=el.value;
 /* ---------- view switch ---------- */
 function setView(v){
   state.view=v;
-  if(v!=='today') state.lastBoardView=v;
+  if(v!=='today'&&v!=='report') state.lastBoardView=v;
   document.getElementById('tab-list').classList.toggle('active',v==='list');
   document.getElementById('tab-kanban').classList.toggle('active',v==='kanban');
   document.getElementById('today-view').style.display=v==='today'?'block':'none';
+  document.getElementById('report-view').style.display=v==='report'?'block':'none';
   document.getElementById('list-view').style.display=v==='list'?'block':'none';
   document.getElementById('kanban-view').style.display=v==='kanban'?'block':'none';
-  document.getElementById('status-tabs').style.display='flex'; // 항상 표시(오늘 탭 포함)
+  document.getElementById('status-tabs').style.display='flex'; // 항상 표시(오늘/성과 탭 포함)
   render();
 }
-function renderView(){ if(state.view==='today') renderToday(); else if(state.view==='list') renderList(); else renderKanban(); }
+function renderView(){
+  if(state.view==='today') renderToday();
+  else if(state.view==='report') renderReport();
+  else if(state.view==='list') renderList();
+  else renderKanban();
+}
 function render(){ refreshFilterOptions(); renderStatusTabs(); renderView(); }
 
 /* ---------- list (tree) ---------- */
@@ -725,6 +747,87 @@ function todoItem(t,T,isOver){
         ${due}
       </div>
     </div>
+  </div>`;
+}
+
+/* ---------- 성과 리포트 ---------- */
+function fmtDate(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function startOfWeek(d){ const x=new Date(d); const day=(x.getDay()+6)%7; x.setDate(x.getDate()-day); x.setHours(0,0,0,0); return x; } // 월요일
+function ensureReportRange(){
+  if(!state.reportFrom||!state.reportTo){
+    const mon=startOfWeek(new Date()); const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+    state.reportFrom=fmtDate(mon); state.reportTo=fmtDate(sun);
+  }
+}
+function setReportFrom(v){ state.reportFrom=v; renderReport(); }
+function setReportTo(v){ state.reportTo=v; renderReport(); }
+function reportPreset(kind){
+  const now=new Date();
+  if(kind==='thisweek'){ const m=startOfWeek(now); const s=new Date(m); s.setDate(m.getDate()+6); state.reportFrom=fmtDate(m); state.reportTo=fmtDate(s); }
+  else if(kind==='lastweek'){ const m=startOfWeek(now); m.setDate(m.getDate()-7); const s=new Date(m); s.setDate(m.getDate()+6); state.reportFrom=fmtDate(m); state.reportTo=fmtDate(s); }
+  else if(kind==='7days'){ const s=new Date(now); s.setDate(now.getDate()-6); state.reportFrom=fmtDate(s); state.reportTo=fmtDate(now); }
+  else if(kind==='month'){ state.reportFrom=fmtDate(new Date(now.getFullYear(),now.getMonth(),1)); state.reportTo=fmtDate(new Date(now.getFullYear(),now.getMonth()+1,0)); }
+  renderReport();
+}
+function renderReport(){
+  ensureReportRange();
+  const from=state.reportFrom, to=state.reportTo;
+  const inRange=d=> d && d>=from && d<=to;
+  const overlaps=(s,e)=> (s||e) && (!s||s<=to) && (!e||e>=from);
+  const pool=state.tasks.filter(t=>matchBasic(t));
+  const personsOf=t=>(t.assignee||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const doneAll=pool.filter(t=>t.status==='완료' && inRange(t.end));
+  const rows=allPeople().map(p=>{
+    const mine=pool.filter(t=>personsOf(t).includes(p));
+    const completed=mine.filter(t=>t.status==='완료' && inRange(t.end)).sort((a,b)=>(a.end<b.end?1:-1));
+    const active=mine.filter(t=>t.status==='진행중' && overlaps(t.start,t.end)).sort(cmpTask);
+    return {p,completed,active};
+  }).filter(r=>r.completed.length||r.active.length)
+    .sort((a,b)=>b.completed.length-a.completed.length || b.active.length-a.active.length);
+
+  let html=`<div class="today-head">
+    <h2>성과 리포트</h2>
+    <span class="sub">${from.replace(/-/g,'. ')} ~ ${to.replace(/-/g,'. ')}</span>
+  </div>
+  <div class="report-controls">
+    <input type="date" value="${esc(from)}" onchange="setReportFrom(this.value)"> ~
+    <input type="date" value="${esc(to)}" onchange="setReportTo(this.value)">
+    <span class="seg">
+      <button class="btn btn-ghost btn-sm" onclick="reportPreset('thisweek')">이번 주</button>
+      <button class="btn btn-ghost btn-sm" onclick="reportPreset('lastweek')">지난 주</button>
+      <button class="btn btn-ghost btn-sm" onclick="reportPreset('7days')">최근 7일</button>
+      <button class="btn btn-ghost btn-sm" onclick="reportPreset('month')">이번 달</button>
+    </span>
+  </div>
+  <div class="today-stats">
+    <div class="stat"><div class="n">${doneAll.length}</div><div class="l">완료(기간)</div></div>
+    <div class="stat"><div class="n">${rows.length}</div><div class="l">참여 인원</div></div>
+  </div>`;
+
+  if(!rows.length){ html+=`<div class="empty-today">해당 기간에 완료/진행한 업무가 없습니다.</div>`; document.getElementById('report-view').innerHTML=html; return; }
+
+  rows.forEach(r=>{
+    html+=`<div class="rp-person">
+      <div class="rp-head"><span class="avatar">${esc(initials(r.p))}</span>${esc(r.p)}
+        <span class="cnt">완료 ${r.completed.length} · 진행 ${r.active.length}</span></div>`;
+    if(r.completed.length){
+      html+=`<div class="rp-sub">완료</div>`;
+      r.completed.forEach(t=>{ html+=rpItem(t,'✓',t.end); });
+    }
+    if(r.active.length){
+      html+=`<div class="rp-sub">진행 중</div>`;
+      r.active.forEach(t=>{ html+=rpItem(t,'·',t.end?('~ '+t.end):''); });
+    }
+    html+=`</div>`;
+  });
+  document.getElementById('report-view').innerHTML=html;
+}
+function rpItem(t,mark,dateLabel){
+  return `<div class="rp-item">
+    <span class="mark">${mark}</span>
+    <span class="rp-name" onclick="openModal('${t.id}')">${esc(t.task)||'(제목 없음)'}</span>
+    <span class="rp-proj">${esc(t.project)}</span>
+    ${dateLabel?`<span class="rp-date">${esc(dateLabel)}</span>`:''}
   </div>`;
 }
 
