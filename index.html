@@ -98,6 +98,15 @@
   .status-tabs button.active{color:var(--accent);border-bottom-color:var(--accent);}
   .status-tabs .cnt{font-size:11px;color:var(--text-muted);background:var(--bg-muted);padding:0 6px;border-radius:20px;}
   .empty-proj{padding:14px;display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:13px;}
+
+  /* inline editable cells */
+  .cell-select,.cell-date{font-family:inherit;font-size:13px;color:var(--text);border:1px solid transparent;background:transparent;border-radius:6px;padding:3px 4px;max-width:150px;cursor:pointer;}
+  .cell-select:hover,.cell-date:hover{background:var(--bg-muted);}
+  .cell-select:focus,.cell-date:focus{border-color:var(--accent);background:var(--bg);box-shadow:0 0 0 3px var(--accent-soft);outline:none;}
+  .cell-date{color:var(--text-soft);font-variant-numeric:tabular-nums;}
+  .name-input{font-family:inherit;font-size:13px;width:100%;border:1px solid var(--accent);border-radius:6px;padding:5px 8px;background:var(--bg);box-shadow:0 0 0 3px var(--accent-soft);outline:none;}
+  tr.newrow{background:var(--accent-soft);}
+  .ttext{cursor:pointer;} .ttext:hover{text-decoration:underline;text-decoration-color:var(--border-strong);}
   .pr{font-size:12px;font-weight:600;white-space:nowrap;}
   .pr-높음{color:var(--pr-high);} .pr-보통{color:var(--pr-mid);} .pr-낮음{color:var(--pr-low);}
   .who-chip{font-size:11px;color:var(--text-soft);}
@@ -254,7 +263,7 @@
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['진행예정','진행중','완료'];
-let state = { tasks: [], projects: [], view:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null };
+let state = { tasks: [], projects: [], view:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null };
 
 /* ---------- persistence ---------- */
 function load(){
@@ -392,36 +401,88 @@ function renderList(){
       html+=`</tbody></table>`;
     } else {
       html+=`<div class="empty-proj">아직 작업이 없습니다.
-        <button class="btn btn-ghost btn-sm" onclick="openNewInProject('${esc(proj)}')">＋ 작업 추가</button></div>`;
+        <button class="btn btn-ghost btn-sm" onclick="startNewTop('${esc(proj)}')">＋ 작업 추가</button></div>`;
     }
     html+=`</div></div>`;
   });
   body.innerHTML=html;
 }
+function selOptions(values, current){
+  const vals=values.slice();
+  if(current && !vals.includes(current)) vals.push(current);
+  return vals.map(v=>`<option value="${esc(v)}" ${v===current?'selected':''}>${esc(v)||'–'}</option>`).join('');
+}
+function statusColor(s){ return s==='완료'?'#15803d':s==='진행중'?'#1d4ed8':'#52525b'; }
+function prColor(p){ return p==='높음'?'var(--pr-high)':p==='보통'?'var(--pr-mid)':p==='낮음'?'var(--pr-low)':'var(--text-muted)'; }
+function cellSelect(id,field,value,values,extra){
+  return `<select class="cell-select" style="${extra||''}" onclick="event.stopPropagation()" onchange="updateField('${id}','${field}',this.value)">${selOptions(values,value||'')}</select>`;
+}
 function renderRow(t,depth,vis){
   const kids=childrenOf(t.id).filter(c=>!vis||vis.has(c.id));
   const open=state.expanded[t.id];
   const prog=progressOf(t.id);
-  let twisty;
-  if(kids.length) twisty=`<span class="twisty has" onclick="event.stopPropagation();toggleExpand('${t.id}')">${open?'▼':'▶'}</span>`;
-  else twisty=`<span class="twisty empty">•</span>`;
-  let html=`<tr class="${depth?'child-row':''}" onclick="openModal('${t.id}')">
+  // 신규 인라인 입력 행
+  if(t.id===state.newRowId){
+    return `<tr class="${depth?'child-row':''} newrow">
+      <td><div class="name-cell" style="padding-left:${depth*18}px">
+        <span class="twisty empty">•</span>
+        <input id="new-row-input" class="name-input" placeholder="작업명 입력 후 Enter (취소: Esc)" value="${esc(t.task)}"
+          onclick="event.stopPropagation()"
+          onkeydown="if(event.key==='Enter'){this.blur();}else if(event.key==='Escape'){event.preventDefault();cancelNewRow('${t.id}');}"
+          onblur="commitNewRow('${t.id}',this.value)">
+      </div></td>
+      <td class="muted" colspan="7" style="font-size:12px">작업명을 입력하면 등록됩니다. 등록 후 각 항목을 드롭다운으로 선택하세요.</td>
+    </tr>`;
+  }
+  const twisty = kids.length
+    ? `<span class="twisty has" onclick="event.stopPropagation();toggleExpand('${t.id}')">${open?'▼':'▶'}</span>`
+    : `<span class="twisty empty">•</span>`;
+  let html=`<tr class="${depth?'child-row':''}">
     <td><div class="name-cell" style="padding-left:${depth*18}px">
-      ${twisty}<span class="ttext">${esc(t.task)}</span>
+      ${twisty}<span class="ttext" onclick="event.stopPropagation();openModal('${t.id}')" title="자세히 보기">${esc(t.task)||'<span class=muted>(제목 없음)</span>'}</span>
       ${prog?`<span class="miniprog">${prog.done}/${prog.total}<span class="bar"><i style="width:${prog.pct}%"></i></span></span>`:''}
-      <button class="subadd" onclick="event.stopPropagation();openSub('${t.id}')">＋ 하위</button>
+      <button class="subadd" onclick="event.stopPropagation();startNewSub('${t.id}')">＋ 하위</button>
     </div></td>
-    <td class="cat">${esc(t.category)||'–'}</td>
-    <td class="assignee">${esc(t.assignee)||'–'}</td>
-    <td>${t.priority?`<span class="pr pr-${t.priority}">${esc(t.priority)}</span>`:'–'}</td>
-    <td class="dates">${esc(t.start)||'–'}</td>
-    <td class="dates">${esc(t.end)||'–'}</td>
-    <td><span class="badge st-${t.status||'진행예정'}"><span class="bdot"></span>${esc(t.status||'진행예정')}</span></td>
-    <td class="hide-sm">${docCell(t.doc)}</td>
+    <td>${cellSelect(t.id,'category',t.category,['',...distinct('category')])}</td>
+    <td>${cellSelect(t.id,'assignee',t.assignee,['',...distinct('assignee')])}</td>
+    <td>${cellSelect(t.id,'priority',t.priority,['','높음','보통','낮음'],'color:'+prColor(t.priority)+';font-weight:600')}</td>
+    <td><input type="date" class="cell-date" value="${esc(t.start)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','start',this.value)"></td>
+    <td><input type="date" class="cell-date" value="${esc(t.end)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','end',this.value)"></td>
+    <td>${cellSelect(t.id,'status',t.status||'진행예정',STATUSES,'color:'+statusColor(t.status||'진행예정')+';font-weight:600')}</td>
+    <td class="hide-sm" onclick="event.stopPropagation();openModal('${t.id}')">${docCell(t.doc)}</td>
   </tr>`;
   if(kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
   return html;
 }
+function distinct(field){ return [...new Set(state.tasks.map(t=>t[field]).filter(Boolean))].sort(); }
+function updateField(id,field,value){
+  const t=byId(id); if(!t) return;
+  t[field]=value; save();
+  renderStatusTabs();
+  if(state.view==='list') renderList(); else renderKanban();
+}
+/* 인라인 하위/작업 추가 */
+function startNewSub(parentId){
+  const p=byId(parentId); if(!p) return;
+  const id=uid();
+  state.tasks.push({id,parentId,project:p.project,category:p.category,assignee:p.assignee,priority:'',start:'',end:'',status:'진행예정',doc:'',progress:'',issue:'',order:Date.now()});
+  state.expanded[parentId]=true; state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
+}
+function startNewTop(project){
+  const id=uid();
+  state.tasks.push({id,parentId:null,project,category:'',assignee:'',priority:'',start:'',end:'',status:'진행예정',doc:'',progress:'',issue:'',order:Date.now()});
+  if(project && !state.projects.includes(project)) state.projects.unshift(project);
+  state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
+}
+function focusNewRow(){ const el=document.getElementById('new-row-input'); if(el) el.focus(); }
+function commitNewRow(id,value){
+  const t=byId(id); if(!t) return;
+  const name=(value||'').trim();
+  state.newRowId=null;
+  if(!name){ state.tasks=state.tasks.filter(x=>x.id!==id); save({noSync:true}); renderList(); return; }
+  t.task=name; save(); renderList();
+}
+function cancelNewRow(id){ state.newRowId=null; state.tasks=state.tasks.filter(x=>x.id!==id); save({noSync:true}); renderList(); }
 function toggleGroup(p){ state.collapsed[p]=!state.collapsed[p]; save({noSync:true}); renderList(); }
 function toggleExpand(id){ state.expanded[id]=!state.expanded[id]; save({noSync:true}); renderList(); }
 function expandAll(v){
