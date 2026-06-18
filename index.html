@@ -110,6 +110,21 @@
   .name-input{font-family:inherit;font-size:13px;width:100%;border:1px solid var(--accent);border-radius:6px;padding:5px 8px;background:var(--bg);box-shadow:0 0 0 3px var(--accent-soft);outline:none;}
   tr.newrow{background:var(--accent-soft);}
   .ttext{cursor:pointer;} .ttext:hover{text-decoration:underline;text-decoration-color:var(--border-strong);}
+
+  /* assignee multi-select */
+  .assignee-cell{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--text-soft);border:1px solid transparent;border-radius:6px;padding:3px 6px;cursor:pointer;max-width:160px;}
+  .assignee-cell:hover{background:var(--bg-muted);}
+  .assignee-cell .caret{color:var(--text-muted);font-size:10px;margin-left:auto;}
+  #assignee-pop{position:absolute;z-index:60;background:var(--bg);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.12);padding:6px;min-width:150px;display:none;}
+  .ap-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:13px;cursor:pointer;}
+  .ap-item:hover{background:var(--bg-soft);}
+  .ap-add{padding:7px 8px;margin-top:4px;border-top:1px solid var(--border);color:var(--accent);font-size:12px;cursor:pointer;border-radius:6px;}
+  .ap-add:hover{background:var(--accent-soft);}
+  .assignee-box{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .assignee-box label{display:inline-flex;align-items:center;gap:5px;font-size:13px;border:1px solid var(--border-strong);border-radius:20px;padding:4px 11px;cursor:pointer;user-select:none;}
+  .assignee-box label.on{background:var(--accent-soft);border-color:var(--accent);color:#1d4ed8;}
+  .assignee-box label input{margin:0;}
+  .assignee-box .addp{font-size:12px;color:var(--accent);cursor:pointer;padding:4px 8px;}
   .pr{font-size:12px;font-weight:600;white-space:nowrap;color:var(--text-soft);}
   .pr-높음,.pr-보통,.pr-낮음{color:var(--text-soft);}
   .who-chip{font-size:11px;color:var(--text-soft);}
@@ -204,6 +219,8 @@
   <div id="kanban-view" style="display:none"></div>
 </main>
 
+<div id="assignee-pop"></div>
+
 <!-- Modal -->
 <div class="overlay" id="overlay">
   <div class="modal">
@@ -228,8 +245,8 @@
         <datalist id="cat-list"></datalist>
       </div>
       <div class="field">
-        <label>담당자</label>
-        <input type="text" id="m-assignee" list="assignee-list" placeholder="예: 안나">
+        <label>담당자 (복수 선택)</label>
+        <div id="m-assignee-box" class="assignee-box"></div>
         <datalist id="assignee-list"></datalist>
       </div>
       <div class="field">
@@ -268,18 +285,25 @@
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['진행예정','진행중','완료'];
-let state = { tasks: [], projects: [], view:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null };
+let state = { tasks: [], projects: [], people: [], view:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null };
 
 /* ---------- persistence ---------- */
 function load(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){ const d=JSON.parse(raw); state.tasks=d.tasks||[]; state.collapsed=d.collapsed||{}; state.expanded=d.expanded||{}; state.projects=d.projects||[]; }
+    if(raw){ const d=JSON.parse(raw); state.tasks=d.tasks||[]; state.collapsed=d.collapsed||{}; state.expanded=d.expanded||{}; state.projects=d.projects||[]; state.people=d.people||[]; }
     else { seedFromSheet(); }
   }catch(e){ state.tasks=[]; }
   migrate();
   if(!state.projects.length) state.projects = projectsFromTasks();
+  if(!state.people.length) state.people = peopleFromTasks();
 }
+function peopleFromTasks(){
+  const seen=[]; state.tasks.slice().sort((a,b)=>(a.order||0)-(b.order||0))
+    .forEach(t=>{ (t.assignee||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(p=>{ if(!seen.includes(p)) seen.push(p); }); });
+  return seen;
+}
+function allPeople(){ const out=[...state.people]; peopleFromTasks().forEach(p=>{ if(!out.includes(p)) out.push(p); }); return out; }
 function migrate(){
   // 구버전 상태값 '대기중' → '진행예정'
   state.tasks.forEach(t=>{ if(t.status==='대기중') t.status='진행예정'; });
@@ -294,10 +318,11 @@ function seedFromSheet(){
   state.tasks = seed;
   seed.forEach(t=>{ if(!t.parentId) state.expanded[t.id]=true; });
   state.projects = projectsFromTasks();
+  state.people = peopleFromTasks();
   save();
 }
 function save(opts){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,projects:state.projects,collapsed:state.collapsed,expanded:state.expanded}));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,projects:state.projects,people:state.people,collapsed:state.collapsed,expanded:state.expanded}));
   if(!(opts&&opts.noSync)) scheduleSync();
 }
 function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
@@ -453,7 +478,7 @@ function renderRow(t,depth,vis){
       <button class="subadd" onclick="event.stopPropagation();startNewSub('${t.id}')">＋ 하위</button>
     </div></td>
     <td>${cellSelect(t.id,'category',t.category,['',...distinct('category')])}</td>
-    <td>${cellSelect(t.id,'assignee',t.assignee,['',...distinct('assignee')])}</td>
+    <td>${assigneeCell(t)}</td>
     <td>${cellSelect(t.id,'priority',t.priority,['','높음','보통','낮음'])}</td>
     <td><input type="date" class="cell-date" value="${esc(t.start)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','start',this.value)"></td>
     <td><input type="date" class="cell-date" value="${esc(t.end)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','end',this.value)"></td>
@@ -464,6 +489,39 @@ function renderRow(t,depth,vis){
   return html;
 }
 function distinct(field){ return [...new Set(state.tasks.map(t=>t[field]).filter(Boolean))].sort(); }
+function assigneeCell(t){
+  const disp=(t.assignee||'').trim();
+  return `<div class="assignee-cell" onclick="event.stopPropagation();toggleAssigneeMenu(event,'${t.id}')"><span>${disp?esc(disp):'–'}</span><span class="caret">▾</span></div>`;
+}
+let _assigneeFor=null;
+function toggleAssigneeMenu(e,id){
+  const pop=document.getElementById('assignee-pop');
+  if(_assigneeFor===id && pop.style.display==='block'){ closeAssigneeMenu(); return; }
+  _assigneeFor=id;
+  const t=byId(id); const sel=(t.assignee||'').split(',').map(s=>s.trim()).filter(Boolean);
+  pop.innerHTML = allPeople().map(p=>
+    `<label class="ap-item" onclick="event.stopPropagation()"><input type="checkbox" ${sel.includes(p)?'checked':''} onchange="toggleAssignee('${id}','${esc(p)}',this.checked)"> ${esc(p)}</label>`).join('')
+    + `<div class="ap-add" onclick="event.stopPropagation();addPersonTo('${id}')">＋ 새 담당자</div>`;
+  const r=e.currentTarget.getBoundingClientRect();
+  pop.style.left=(r.left+window.scrollX)+'px';
+  pop.style.top=(r.bottom+window.scrollY+4)+'px';
+  pop.style.display='block';
+}
+function closeAssigneeMenu(){ const pop=document.getElementById('assignee-pop'); if(pop){ pop.style.display='none'; } _assigneeFor=null; }
+function toggleAssignee(id,person,on){
+  const t=byId(id); if(!t) return;
+  let sel=(t.assignee||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(on){ if(!sel.includes(person)) sel.push(person); } else { sel=sel.filter(p=>p!==person); }
+  const order=allPeople(); sel.sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+  t.assignee=sel.join(', '); save();
+  renderStatusTabs(); if(state.view==='list') renderList(); else renderKanban();
+}
+function addPersonTo(id){
+  const name=prompt('새 담당자 이름'); if(name===null) return;
+  const n=name.trim(); if(!n) return;
+  if(!state.people.includes(n)) state.people.push(n);
+  toggleAssignee(id,n,true); closeAssigneeMenu();
+}
 function projSummary(proj){
   const ts=state.tasks.filter(t=>t.project===proj);
   const starts=ts.map(t=>t.start).filter(Boolean).sort();
@@ -558,7 +616,7 @@ function openModal(id){
   if(parent){ pb.classList.add('show'); pb.innerHTML=`상위 작업: <b>${esc(parent.task)}</b> (${esc(parent.project)})`; }
   else pb.classList.remove('show');
   const v=(f,val)=>document.getElementById(f).value=val||'';
-  v('m-task',t?.task); v('m-project',t?.project); v('m-category',t?.category); v('m-assignee',t?.assignee);
+  v('m-task',t?.task); v('m-project',t?.project); v('m-category',t?.category); renderAssigneeBox(t?t.assignee:'');
   v('m-priority',t?.priority||''); v('m-start',t?.start); v('m-end',t?.end); v('m-status',t?.status||'진행예정');
   v('m-doc',t?.doc); v('m-progress',t?.progress); v('m-issue',t?.issue);
   renderSubsSection(id);
@@ -573,13 +631,33 @@ function openSub(parentId){
   const pb=document.getElementById('parent-banner');
   pb.classList.add('show'); pb.innerHTML=`상위 작업: <b>${esc(parent.task)}</b> (${esc(parent.project)})`;
   const v=(f,val)=>document.getElementById(f).value=val||'';
-  v('m-task',''); v('m-project',parent.project); v('m-category',parent.category); v('m-assignee',parent.assignee);
+  v('m-task',''); v('m-project',parent.project); v('m-category',parent.category); renderAssigneeBox(parent.assignee);
   v('m-priority',''); v('m-start',''); v('m-end',''); v('m-status','진행예정'); v('m-doc',''); v('m-progress',''); v('m-issue','');
   document.getElementById('subs-section').style.display='none';
   document.getElementById('overlay').classList.add('open');
   setTimeout(()=>document.getElementById('m-task').focus(),50);
 }
 function addSubFromModal(){ if(state.editingId) openSub(state.editingId); }
+function renderAssigneeBox(str){
+  const sel=(str||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const box=document.getElementById('m-assignee-box');
+  box.innerHTML = allPeople().map(p=>
+    `<label class="${sel.includes(p)?'on':''}"><input type="checkbox" value="${esc(p)}" ${sel.includes(p)?'checked':''} onchange="this.parentNode.classList.toggle('on',this.checked)"> ${esc(p)}</label>`).join('')
+    + `<span class="addp" onclick="addPersonModal()">＋ 담당자</span>`;
+}
+function getModalAssignees(){
+  const order=allPeople();
+  return [...document.querySelectorAll('#m-assignee-box input:checked')].map(c=>c.value)
+    .sort((a,b)=>order.indexOf(a)-order.indexOf(b)).join(', ');
+}
+function addPersonModal(){
+  const name=prompt('새 담당자 이름'); if(name===null) return;
+  const n=name.trim(); if(!n) return;
+  if(!state.people.includes(n)) state.people.push(n);
+  const sel=getModalAssignees().split(',').map(s=>s.trim()).filter(Boolean);
+  if(!sel.includes(n)) sel.push(n);
+  renderAssigneeBox(sel.join(', '));
+}
 function renderSubsSection(id){
   const sec=document.getElementById('subs-section');
   if(!id){ sec.style.display='none'; return; }
@@ -598,7 +676,7 @@ function saveTask(){
   const g=f=>document.getElementById(f).value.trim();
   const task=g('m-task'), project=g('m-project');
   if(!task||!project){ alert('진행업무와 프로젝트는 필수입니다.'); return; }
-  const data={ task,project,category:g('m-category'),assignee:g('m-assignee'),priority:g('m-priority'),
+  const data={ task,project,category:g('m-category'),assignee:getModalAssignees(),priority:g('m-priority'),
     start:g('m-start'),end:g('m-end'),status:g('m-status'),doc:g('m-doc'),progress:g('m-progress'),issue:g('m-issue') };
   if(state.editingId){ Object.assign(byId(state.editingId),data); }
   else{
@@ -689,7 +767,7 @@ function pullFromSheet(opts){
     if(!d||!Array.isArray(d.tasks)) throw 0;
     if(d.tasks.length===0 && opts && opts.seedIfEmpty){ setSyncStatus('시트가 비어 현재 데이터를 업로드…'); return pushToSheet(); }
     state.tasks=d.tasks.map(t=>({parentId:t.parentId||null, order:Number(t.order)||0, ...t}));
-    migrate(); state.projects=projectsFromTasks();
+    migrate(); state.projects=projectsFromTasks(); state.people=peopleFromTasks();
     state.expanded={}; state.tasks.forEach(t=>{ if(!t.parentId) state.expanded[t.id]=true; });
     save({noSync:true}); render(); setSyncStatus('시트에서 불러옴 · '+nowt());
   }).catch(()=>setSyncStatus('불러오기 실패 (URL/배포 확인)'));
@@ -709,7 +787,8 @@ function openSyncSettings(){
 
 /* ---------- init ---------- */
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+document.addEventListener('click',()=>closeAssigneeMenu());   // 팝오버 바깥 클릭 시 닫기
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeAssigneeMenu(); closeModal(); } });
 loadTitle(); load(); render(); updateSyncUI();
 if(getSyncUrl()) pullFromSheet();   // 공유 연결돼 있으면 시트 데이터로 갱신
 </script>
