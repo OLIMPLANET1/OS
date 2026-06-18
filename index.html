@@ -154,6 +154,8 @@
   .todo-main{flex:1;min-width:0;}
   .todo-name{font-weight:500;cursor:pointer;}
   .todo-name:hover{text-decoration:underline;}
+  .todo-item.done .todo-name{text-decoration:line-through;color:var(--text-muted);}
+  .todo-item.done{opacity:.7;}
   .todo-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);margin-top:3px;flex-wrap:wrap;}
   .todo-proj{background:var(--bg-muted);color:var(--text-soft);padding:0 7px;border-radius:4px;font-weight:600;}
   .todo-due strong{color:var(--text);font-weight:600;}
@@ -335,7 +337,7 @@
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['대기','진행중','완료'];
-let state = { tasks: [], projects: [], people: [], peopleColors:{}, projectLinks:{}, view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'' };
+let state = { tasks: [], projects: [], people: [], peopleColors:{}, projectLinks:{}, view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'', todayDone:{} };
 
 /* ---------- persistence ---------- */
 function load(){
@@ -757,11 +759,12 @@ function computeToday(){
   const over=[],today=[],doing=[],soon=[];
   state.tasks.filter(t=>matchBasic(t)).forEach(t=>{
     const st=t.status||'대기';
-    if(st==='완료') return;
+    const done = st==='완료';
+    if(done && !(t.id in state.todayDone)) return; // 완료는 방금 체크한 것만 유지
     const s=t.start||'', e=t.end||'';
     if(e && e<T){ over.push(t); }
     else if(e===T || s===T || (s && e && s<=T && e>=T)){ today.push(t); }
-    else if(st==='진행중'){ doing.push(t); }
+    else if(st==='진행중' || done){ doing.push(t); }
     else if(s && s>T && s<=WEEK){ soon.push(t); }
   });
   return {over,today,doing,soon};
@@ -807,6 +810,12 @@ function renderToday(){
   }
   document.getElementById('today-view').innerHTML=html;
 }
+function toggleTodayDone(id,checked){
+  const t=byId(id); if(!t) return;
+  if(checked){ state.todayDone[id]=t.status||'대기'; t.status='완료'; }
+  else { t.status=state.todayDone[id]||'진행중'; delete state.todayDone[id]; }
+  save(); renderStatusTabs(); renderToday();
+}
 function todoItem(t,T,isOver){
   let due='';
   if(t.end){
@@ -814,8 +823,9 @@ function todoItem(t,T,isOver){
     else if(t.end===T){ due=`<span class="todo-due"><strong>오늘 마감</strong></span>`; }
     else { due=`<span class="todo-due">~ ${esc(fmtK(t.end))}</span>`; }
   } else if(t.start===T){ due=`<span class="todo-due"><strong>오늘 시작</strong></span>`; }
-  return `<div class="todo-item">
-    <input type="checkbox" title="완료 처리" onchange="updateField('${t.id}','status', this.checked?'완료':'진행중')">
+  const done=(t.status||'')==='완료';
+  return `<div class="todo-item${done?' done':''}">
+    <input type="checkbox" title="완료 처리" ${done?'checked':''} onchange="toggleTodayDone('${t.id}',this.checked)">
     <div class="todo-main">
       <span class="todo-name" onclick="openModal('${t.id}')">${esc(t.task)||'(제목 없음)'}</span>
       <div class="todo-meta">
