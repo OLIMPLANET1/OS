@@ -700,7 +700,7 @@ function refreshDatalists(){
 /* ---------- view switch ---------- */
 function setView(v){
   state.view=v;
-  if(v!=='today'&&v!=='report') state.lastBoardView=v;
+  if(v==='list'||v==='kanban') state.lastBoardView=v;   // 보드 뷰만 기억(db/today/report 제외)
   ['today','report','db','list','kanban'].forEach(x=>{ const el=document.getElementById(x+'-view'); if(el) el.style.display=(v===x)?'block':'none'; });
   hideMenus();
   render();
