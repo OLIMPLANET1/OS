@@ -32,7 +32,10 @@
   .nav-item.active .ni{color:var(--accent);}
   .nav-group{font-size:11px;font-weight:700;color:var(--text-muted);padding:14px 10px 5px;letter-spacing:.02em;}
   .nav-group:first-child{padding-top:2px;}
-  .db-frame{width:100%;height:calc(100vh - 132px);border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);}
+  .db-frame{width:100%;height:calc(100vh - 132px);border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);display:block;}
+  body.db-full header{display:none;}
+  body.db-full main{padding:0;max-width:none;margin:0;}
+  body.db-full .db-frame{height:100vh;border:none;border-radius:0;}
   .app-main{flex:1;min-width:0;}
   .board-tools{display:inline-flex;align-items:center;gap:8px;}
 
@@ -624,6 +627,7 @@ function updateChrome(){
   document.getElementById('nav-report').classList.toggle('active', v==='report');
   const navDb=document.getElementById('nav-db'); if(navDb) navDb.classList.toggle('active', v==='db');
   const bt=document.querySelector('.board-tools'); if(bt) bt.style.display=board?'inline-flex':'none';
+  document.body.classList.toggle('db-full', v==='db');   // 고객 DB는 전체 영역 채우기
   // 상단 제목: 탭별
   const titleEl=document.getElementById('board-title');
   if(titleEl){
