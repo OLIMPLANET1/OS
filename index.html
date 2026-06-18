@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프로젝트 스케줄 보드</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --bg-soft:#fafafa;
+    --bg-muted:#f4f4f5;
+    --border:#e5e7eb;
+    --border-strong:#d4d4d8;
+    --text:#18181b;
+    --text-soft:#52525b;
+    --text-muted:#a1a1aa;
+    --accent:#2563eb;
+    --accent-soft:#eff6ff;
+    --radius:8px;
+    --shadow:0 1px 2px rgba(0,0,0,.04);
+    /* status */
+    --st-wait:#a1a1aa;
+    --st-progress:#2563eb;
+    --st-done:#16a34a;
+    /* priority */
+    --pr-high:#dc2626;
+    --pr-mid:#d97706;
+    --pr-low:#65a30d;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--text);
+    background:var(--bg);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky;top:0;z-index:20;
+    background:var(--bg);
+    border-bottom:1px solid var(--border);
+    padding:14px 24px;
+  }
+  .header-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:10px;margin-right:auto;}
+  .brand h1{font-size:17px;font-weight:700;margin:0;letter-spacing:-.01em;}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);}
+
+  .view-toggle{display:inline-flex;background:var(--bg-muted);border-radius:var(--radius);padding:3px;}
+  .view-toggle button{
+    border:none;background:transparent;color:var(--text-soft);
+    padding:6px 16px;border-radius:6px;font-size:13px;font-weight:500;
+  }
+  .view-toggle button.active{background:var(--bg);color:var(--text);box-shadow:var(--shadow);}
+
+  .btn{
+    border:1px solid var(--border-strong);background:var(--bg);color:var(--text);
+    padding:7px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn:hover{background:var(--bg-soft);}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#1d4ed8;}
+  .btn-ghost{border-color:transparent;color:var(--text-soft);}
+  .btn-ghost:hover{background:var(--bg-muted);}
+
+  .filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;margin-top:12px;}
+  select,input[type=text],input[type=date],textarea{
+    font-family:inherit;font-size:13px;color:var(--text);
+    border:1px solid var(--border-strong);border-radius:var(--radius);
+    padding:7px 10px;background:var(--bg);outline:none;
+  }
+  select:focus,input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .search{flex:1;min-width:160px;max-width:280px;}
+  .filter-label{font-size:12px;color:var(--text-muted);font-weight:500;}
+
+  /* ---------- Layout ---------- */
+  main{padding:20px 24px 60px;max-width:1500px;margin:0 auto;}
+
+  /* ---------- List view ---------- */
+  .project-group{margin-bottom:26px;}
+  .project-head{
+    display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;user-select:none;
+  }
+  .project-head .chev{color:var(--text-muted);transition:transform .15s;font-size:11px;}
+  .project-group.collapsed .chev{transform:rotate(-90deg);}
+  .project-head .pname{font-size:15px;font-weight:700;}
+  .project-head .pcount{font-size:12px;color:var(--text-muted);background:var(--bg-muted);padding:2px 8px;border-radius:20px;}
+  .project-group.collapsed .table-wrap{display:none;}
+
+  .table-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{
+    background:var(--bg-soft);text-align:left;font-weight:600;color:var(--text-soft);
+    padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;white-space:nowrap;
+  }
+  tbody td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--bg-soft);}
+  tbody tr{cursor:pointer;}
+  td.task-name{font-weight:500;min-width:180px;}
+  td.cat,td.assignee{color:var(--text-soft);white-space:nowrap;}
+  td.dates{color:var(--text-soft);white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .doc-link{color:var(--accent);text-decoration:none;}
+  .doc-link:hover{text-decoration:underline;}
+
+  /* badges */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:20px;white-space:nowrap;}
+  .badge .bdot{width:6px;height:6px;border-radius:50%;}
+  .st-대기중{background:#f4f4f5;color:#52525b;} .st-대기중 .bdot{background:var(--st-wait);}
+  .st-진행중{background:var(--accent-soft);color:#1d4ed8;} .st-진행중 .bdot{background:var(--st-progress);}
+  .st-완료{background:#dcfce7;color:#15803d;} .st-완료 .bdot{background:var(--st-done);}
+
+  .pr{font-size:12px;font-weight:600;white-space:nowrap;}
+  .pr-높음{color:var(--pr-high);} .pr-보통{color:var(--pr-mid);} .pr-낮음{color:var(--pr-low);}
+
+  /* ---------- Kanban view ---------- */
+  .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
+  .kcol{background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius);padding:12px;min-height:120px;}
+  .kcol-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:0 2px;}
+  .kcol-head .ktitle{font-weight:600;font-size:13px;}
+  .kcol-head .kcount{font-size:11px;color:var(--text-muted);background:var(--bg-muted);padding:1px 7px;border-radius:20px;}
+  .kcol.dragover{outline:2px dashed var(--accent);outline-offset:-4px;background:var(--accent-soft);}
+
+  .kcard{
+    background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+    padding:11px 12px;margin-bottom:10px;box-shadow:var(--shadow);cursor:grab;
+  }
+  .kcard:active{cursor:grabbing;}
+  .kcard.dragging{opacity:.4;}
+  .kcard .kc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  .kcard .kc-proj{font-size:11px;font-weight:600;color:#fff;padding:1px 8px;border-radius:4px;}
+  .kcard .kc-name{font-weight:600;font-size:13.5px;margin-bottom:6px;line-height:1.35;}
+  .kcard .kc-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);}
+  .kcard .kc-meta .who{display:inline-flex;align-items:center;gap:4px;}
+  .avatar{width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:600;}
+
+  .empty{color:var(--text-muted);text-align:center;padding:40px 0;font-size:13px;}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-start;justify-content:center;z-index:50;padding:40px 16px;overflow:auto;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--bg);border-radius:12px;width:100%;max-width:560px;box-shadow:0 10px 40px rgba(0,0,0,.18);}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);}
+  .modal-head h2{margin:0;font-size:16px;font-weight:700;}
+  .modal-body{padding:18px 22px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .modal-body .full{grid-column:1 / -1;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;font-weight:600;color:var(--text-soft);}
+  .field input,.field select,.field textarea{width:100%;}
+  .field textarea{resize:vertical;min-height:60px;}
+  .modal-foot{display:flex;align-items:center;gap:8px;padding:16px 22px;border-top:1px solid var(--border);}
+  .modal-foot .spacer{margin-left:auto;}
+  .icon-btn{border:none;background:transparent;color:var(--text-muted);font-size:20px;line-height:1;padding:4px;border-radius:6px;}
+  .icon-btn:hover{background:var(--bg-muted);color:var(--text);}
+
+  @media(max-width:820px){
+    .kanban{grid-template-columns:1fr;}
+    .modal-body{grid-template-columns:1fr;}
+    .hide-sm{display:none;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div class="brand"><span class="dot"></span><h1>프로젝트 스케줄 보드</h1></div>
+    <div class="view-toggle">
+      <button id="tab-list" class="active" onclick="setView('list')">리스트</button>
+      <button id="tab-kanban" onclick="setView('kanban')">칸반</button>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">＋ 작업 추가</button>
+  </div>
+  <div class="filters">
+    <input type="text" class="search" id="search" placeholder="검색 (작업·프로젝트·담당자)" oninput="render()">
+    <span class="filter-label">프로젝트</span>
+    <select id="f-project" onchange="render()"><option value="">전체</option></select>
+    <span class="filter-label">담당자</span>
+    <select id="f-assignee" onchange="render()"><option value="">전체</option></select>
+    <span class="filter-label">상태</span>
+    <select id="f-status" onchange="render()">
+      <option value="">전체</option><option>대기중</option><option>진행중</option><option>완료</option>
+    </select>
+    <button class="btn btn-ghost" style="margin-left:auto" onclick="exportData()">내보내기</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">가져오기</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+  </div>
+</header>
+
+<main>
+  <div id="list-view"></div>
+  <div id="kanban-view" style="display:none"></div>
+</main>
+
+<!-- Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modal-title">작업 추가</h2>
+      <button class="icon-btn" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field full">
+        <label>진행업무 *</label>
+        <input type="text" id="m-task" placeholder="예: 분양 홍보 페이지 기획">
+      </div>
+      <div class="field">
+        <label>프로젝트 *</label>
+        <input type="text" id="m-project" list="proj-list" placeholder="예: 건설 분양">
+        <datalist id="proj-list"></datalist>
+      </div>
+      <div class="field">
+        <label>구분</label>
+        <input type="text" id="m-category" placeholder="예: 마케팅">
+      </div>
+      <div class="field">
+        <label>담당자</label>
+        <input type="text" id="m-assignee" list="assignee-list" placeholder="예: 안나">
+        <datalist id="assignee-list"></datalist>
+      </div>
+      <div class="field">
+        <label>우선순위</label>
+        <select id="m-priority"><option>보통</option><option>높음</option><option>낮음</option></select>
+      </div>
+      <div class="field">
+        <label>시작일</label>
+        <input type="date" id="m-start">
+      </div>
+      <div class="field">
+        <label>종료일(예상)</label>
+        <input type="date" id="m-end">
+      </div>
+      <div class="field">
+        <label>상태</label>
+        <select id="m-status"><option>대기중</option><option>진행중</option><option>완료</option></select>
+      </div>
+      <div class="field">
+        <label>결과물/진행문서 (URL)</label>
+        <input type="text" id="m-doc" placeholder="https://...">
+      </div>
+      <div class="field full">
+        <label>진행사항</label>
+        <textarea id="m-progress"></textarea>
+      </div>
+      <div class="field full">
+        <label>이슈/확인사항</label>
+        <textarea id="m-issue"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="m-delete" style="color:var(--pr-high);border-color:#fecaca;display:none" onclick="deleteTask()">삭제</button>
+      <div class="spacer"></div>
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveTask()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'schedule-board-v1';
+const STATUSES = ['대기중','진행중','완료'];
+let state = { tasks: [], view: 'list', collapsed: {}, editingId: null };
+
+/* ---------- seed data (시트 구조 기반 샘플) ---------- */
+const SEED = [
+  {project:'건설 분양', category:'마케팅', assignee:'안나', task:'분양 홍보 페이지 기획', priority:'높음', start:'2026-06-01', end:'2026-06-20', status:'진행중', doc:'', progress:'와이어프레임 1차 완료', issue:''},
+  {project:'건설 분양', category:'고객관리', assignee:'찰스', task:'고객 DB 정리 및 마이그레이션', priority:'보통', start:'2026-06-05', end:'2026-06-30', status:'대기중', doc:'', progress:'', issue:'데이터 중복 확인 필요'},
+  {project:'건설 분양', category:'기획', assignee:'안나', task:'분양 일정표 확정', priority:'높음', start:'2026-05-20', end:'2026-06-10', status:'완료', doc:'', progress:'경영진 승인 완료', issue:''},
+  {project:'사내 운영', category:'관리', assignee:'찰스', task:'주간 회의 자료 정리', priority:'낮음', start:'2026-06-15', end:'2026-06-18', status:'진행중', doc:'', progress:'', issue:''},
+];
+
+/* ---------- persistence ---------- */
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ const d = JSON.parse(raw); state.tasks = d.tasks||[]; state.collapsed = d.collapsed||{}; }
+    else { state.tasks = SEED.map((t,i)=>({id:uid(), order:i, ...t})); save(); }
+  }catch(e){ state.tasks = []; }
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks, collapsed:state.collapsed}));
+}
+function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+/* ---------- helpers ---------- */
+function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function projColor(name){
+  let h=0; for(let i=0;i<name.length;i++) h=name.charCodeAt(i)+((h<<5)-h);
+  return `hsl(${Math.abs(h)%360} 55% 48%)`;
+}
+function initials(name){ return (name||'').trim().slice(0,2) || '–'; }
+
+function filtered(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const fp = document.getElementById('f-project').value;
+  const fa = document.getElementById('f-assignee').value;
+  const fs = document.getElementById('f-status').value;
+  return state.tasks.filter(t=>{
+    if(fp && t.project!==fp) return false;
+    if(fa && t.assignee!==fa) return false;
+    if(fs && t.status!==fs) return false;
+    if(q){
+      const hay = (t.task+' '+t.project+' '+t.assignee+' '+t.category+' '+t.progress+' '+t.issue).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function refreshFilterOptions(){
+  const projects=[...new Set(state.tasks.map(t=>t.project).filter(Boolean))].sort();
+  const assignees=[...new Set(state.tasks.map(t=>t.assignee).filter(Boolean))].sort();
+  fillSelect('f-project', projects);
+  fillSelect('f-assignee', assignees);
+  document.getElementById('proj-list').innerHTML = projects.map(p=>`<option value="${esc(p)}">`).join('');
+  document.getElementById('assignee-list').innerHTML = assignees.map(a=>`<option value="${esc(a)}">`).join('');
+}
+function fillSelect(id, vals){
+  const el=document.getElementById(id); const cur=el.value;
+  el.innerHTML='<option value="">전체</option>'+vals.map(v=>`<option>${esc(v)}</option>`).join('');
+  if(vals.includes(cur)) el.value=cur;
+}
+
+/* ---------- views ---------- */
+function setView(v){
+  state.view=v;
+  document.getElementById('tab-list').classList.toggle('active', v==='list');
+  document.getElementById('tab-kanban').classList.toggle('active', v==='kanban');
+  document.getElementById('list-view').style.display = v==='list'?'block':'none';
+  document.getElementById('kanban-view').style.display = v==='kanban'?'block':'none';
+  render();
+}
+
+function render(){
+  refreshFilterOptions();
+  if(state.view==='list') renderList(); else renderKanban();
+}
+
+function renderList(){
+  const rows = filtered();
+  const el = document.getElementById('list-view');
+  if(!rows.length){ el.innerHTML='<div class="empty">표시할 작업이 없습니다.</div>'; return; }
+  const groups={};
+  rows.forEach(t=>{ (groups[t.project]=groups[t.project]||[]).push(t); });
+  let html='';
+  Object.keys(groups).sort().forEach(proj=>{
+    const list=groups[proj];
+    const collapsed = state.collapsed[proj] ? 'collapsed':'';
+    html+=`<div class="project-group ${collapsed}">
+      <div class="project-head" onclick="toggleGroup('${esc(proj)}')">
+        <span class="chev">▼</span>
+        <span class="pname" style="color:${projColor(proj)}">${esc(proj)}</span>
+        <span class="pcount">${list.length}</span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>진행업무</th><th>구분</th><th>담당자</th><th>우선순위</th>
+          <th>시작일</th><th>종료일(예상)</th><th>상태</th><th class="hide-sm">문서</th>
+        </tr></thead><tbody>`;
+    list.forEach(t=>{
+      html+=`<tr onclick="openModal('${t.id}')">
+        <td class="task-name">${esc(t.task)}</td>
+        <td class="cat">${esc(t.category)||'–'}</td>
+        <td class="assignee">${esc(t.assignee)||'–'}</td>
+        <td><span class="pr pr-${t.priority}">${esc(t.priority)||'–'}</span></td>
+        <td class="dates">${esc(t.start)||'–'}</td>
+        <td class="dates">${esc(t.end)||'–'}</td>
+        <td><span class="badge st-${t.status}"><span class="bdot"></span>${esc(t.status)}</span></td>
+        <td class="hide-sm">${t.doc?`<a class="doc-link" href="${esc(t.doc)}" target="_blank" onclick="event.stopPropagation()">열기 ↗</a>`:'–'}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div></div>`;
+  });
+  el.innerHTML=html;
+}
+
+function toggleGroup(proj){ state.collapsed[proj]=!state.collapsed[proj]; save(); renderList(); }
+
+function renderKanban(){
+  const rows = filtered();
+  const el = document.getElementById('kanban-view');
+  let html='<div class="kanban">';
+  STATUSES.forEach(st=>{
+    const list = rows.filter(t=>t.status===st).sort((a,b)=>(a.order||0)-(b.order||0));
+    html+=`<div class="kcol" data-status="${st}"
+        ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${st}')">
+      <div class="kcol-head"><span class="badge st-${st}"><span class="bdot"></span>${st}</span><span class="kcount">${list.length}</span></div>`;
+    list.forEach(t=>{
+      html+=`<div class="kcard" draggable="true" data-id="${t.id}"
+          ondragstart="onDragStart(event,'${t.id}')" ondragend="onDragEnd(event)" onclick="openModal('${t.id}')">
+        <div class="kc-top">
+          <span class="kc-proj" style="background:${projColor(t.project)}">${esc(t.project)}</span>
+          <span class="pr pr-${t.priority}">${esc(t.priority)||''}</span>
+        </div>
+        <div class="kc-name">${esc(t.task)}</div>
+        <div class="kc-meta">
+          ${t.assignee?`<span class="who"><span class="avatar">${esc(initials(t.assignee))}</span>${esc(t.assignee)}</span>`:''}
+          ${t.end?`<span>~ ${esc(t.end)}</span>`:''}
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+/* ---------- drag & drop ---------- */
+let dragId=null;
+function onDragStart(e,id){ dragId=id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function onDragEnd(e){ e.currentTarget.classList.remove('dragging'); dragId=null; }
+function onDragOver(e){ e.preventDefault(); e.currentTarget.classList.add('dragover'); }
+function onDragLeave(e){ e.currentTarget.classList.remove('dragover'); }
+function onDrop(e,status){
+  e.preventDefault(); e.currentTarget.classList.remove('dragover');
+  const t = state.tasks.find(x=>x.id===dragId);
+  if(t && t.status!==status){ t.status=status; t.order=Date.now(); save(); renderKanban(); }
+}
+
+/* ---------- modal ---------- */
+function openModal(id){
+  state.editingId = id||null;
+  const t = id ? state.tasks.find(x=>x.id===id) : null;
+  document.getElementById('modal-title').textContent = t?'작업 편집':'작업 추가';
+  document.getElementById('m-delete').style.display = t?'inline-flex':'none';
+  const v=(f,val)=>document.getElementById(f).value = val||'';
+  v('m-task',t?.task); v('m-project',t?.project); v('m-category',t?.category);
+  v('m-assignee',t?.assignee); v('m-priority',t?.priority||'보통');
+  v('m-start',t?.start); v('m-end',t?.end); v('m-status',t?.status||'대기중');
+  v('m-doc',t?.doc); v('m-progress',t?.progress); v('m-issue',t?.issue);
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('m-task').focus(),50);
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); state.editingId=null; }
+
+function saveTask(){
+  const g=f=>document.getElementById(f).value.trim();
+  const task=g('m-task'), project=g('m-project');
+  if(!task||!project){ alert('진행업무와 프로젝트는 필수입니다.'); return; }
+  const data={ task, project, category:g('m-category'), assignee:g('m-assignee'),
+    priority:g('m-priority'), start:g('m-start'), end:g('m-end'), status:g('m-status'),
+    doc:g('m-doc'), progress:g('m-progress'), issue:g('m-issue') };
+  if(state.editingId){
+    const t=state.tasks.find(x=>x.id===state.editingId); Object.assign(t,data);
+  }else{
+    state.tasks.push({id:uid(), order:Date.now(), ...data});
+  }
+  save(); closeModal(); render();
+}
+function deleteTask(){
+  if(!state.editingId) return;
+  if(!confirm('이 작업을 삭제할까요?')) return;
+  state.tasks=state.tasks.filter(x=>x.id!==state.editingId);
+  save(); closeModal(); render();
+}
+
+/* ---------- import / export ---------- */
+function exportData(){
+  const blob=new Blob([JSON.stringify({tasks:state.tasks},null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='schedule-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importData(ev){
+  const file=ev.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!Array.isArray(d.tasks)) throw 0;
+      state.tasks=d.tasks.map(t=>({id:t.id||uid(), order:t.order||Date.now(), ...t}));
+      save(); render(); alert('가져오기 완료 ('+state.tasks.length+'건)');
+    }catch(e){ alert('올바른 JSON 파일이 아닙니다.'); }
+    ev.target.value='';
+  };
+  r.readAsText(file);
+}
+
+/* ---------- init ---------- */
+document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+load();
+render();
+</script>
+</body>
+</html>
