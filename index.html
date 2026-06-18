@@ -125,6 +125,30 @@
   .assignee-box label.on{background:var(--accent-soft);border-color:var(--accent);color:#1d4ed8;}
   .assignee-box label input{margin:0;}
   .assignee-box .addp{font-size:12px;color:var(--accent);cursor:pointer;padding:4px 8px;}
+
+  /* today view */
+  .today-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;}
+  .today-head h2{font-size:20px;font-weight:700;margin:0;letter-spacing:-.01em;}
+  .today-head .sub{color:var(--text-muted);font-size:13px;}
+  .today-stats{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
+  .stat{border:1px solid var(--border);border-radius:8px;padding:9px 16px;min-width:88px;}
+  .stat .n{font-size:21px;font-weight:700;line-height:1.1;}
+  .stat .l{font-size:12px;color:var(--text-muted);margin-top:2px;}
+  .todo-section{margin-bottom:20px;}
+  .todo-section h3{font-size:13px;font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
+  .todo-section h3 .c{font-size:11px;color:var(--text-muted);background:var(--bg-muted);padding:1px 7px;border-radius:20px;}
+  .todo-list{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .todo-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);}
+  .todo-item:last-child{border-bottom:none;}
+  .todo-item:hover{background:var(--bg-soft);}
+  .todo-item input[type=checkbox]{width:17px;height:17px;flex:none;cursor:pointer;accent-color:var(--accent);}
+  .todo-main{flex:1;min-width:0;}
+  .todo-name{font-weight:500;cursor:pointer;}
+  .todo-name:hover{text-decoration:underline;}
+  .todo-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);margin-top:3px;flex-wrap:wrap;}
+  .todo-proj{background:var(--bg-muted);color:var(--text-soft);padding:0 7px;border-radius:4px;font-weight:600;}
+  .todo-due strong{color:var(--text);font-weight:600;}
+  .empty-today{color:var(--text-muted);text-align:center;padding:54px 0;font-size:14px;}
   .pr{font-size:12px;font-weight:600;white-space:nowrap;color:var(--text-soft);}
   .pr-높음,.pr-보통,.pr-낮음{color:var(--text-soft);}
   .who-chip{font-size:11px;color:var(--text-soft);}
@@ -184,7 +208,8 @@
       onblur="saveTitle(this.innerText)"
       onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">프로젝트 스케줄 보드</h1></div>
     <div class="view-toggle">
-      <button id="tab-list" class="active" onclick="setView('list')">리스트</button>
+      <button id="tab-today" class="active" onclick="setView('today')">오늘</button>
+      <button id="tab-list" onclick="setView('list')">리스트</button>
       <button id="tab-kanban" onclick="setView('kanban')">칸반</button>
     </div>
     <button class="btn" onclick="addProject()">＋ 프로젝트</button>
@@ -208,7 +233,8 @@
 </header>
 
 <main>
-  <div id="list-view">
+  <div id="today-view"></div>
+  <div id="list-view" style="display:none">
     <div class="toolbar">
       <button class="btn btn-ghost btn-sm" onclick="expandAll(true)">모두 펼치기</button>
       <button class="btn btn-ghost btn-sm" onclick="expandAll(false)">모두 접기</button>
@@ -285,7 +311,7 @@
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['진행예정','진행중','완료'];
-let state = { tasks: [], projects: [], people: [], view:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null };
+let state = { tasks: [], projects: [], people: [], view:'today', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false };
 
 /* ---------- persistence ---------- */
 function load(){
@@ -341,14 +367,18 @@ function progressOf(id){ const d=descendants(id); if(!d.length) return null; con
 function docCell(doc){ if(!doc) return '–'; if(/^https?:\/\//i.test(doc)) return `<a class="doc-link" href="${esc(doc)}" target="_blank" onclick="event.stopPropagation()">열기 ↗</a>`; return `<span class="muted">${esc(doc)}</span>`; }
 
 /* ---------- filtering (tree-aware) ---------- */
-function matchTask(t){
+function matchBasic(t){
   const q=document.getElementById('search').value.trim().toLowerCase();
   const fp=document.getElementById('f-project').value;
   const fa=document.getElementById('f-assignee').value;
   if(fp && t.project!==fp) return false;
   if(fa && !(t.assignee||'').includes(fa)) return false;
-  if(state.statusTab && (t.status||'진행예정')!==state.statusTab) return false;
   if(q){ const hay=(t.task+' '+t.project+' '+t.assignee+' '+t.category+' '+t.progress+' '+t.issue).toLowerCase(); if(!hay.includes(q)) return false; }
+  return true;
+}
+function matchTask(t){
+  if(!matchBasic(t)) return false;
+  if(state.statusTab && (t.status||'진행예정')!==state.statusTab) return false;
   return true;
 }
 function hasFilter(){
@@ -362,7 +392,7 @@ function renderStatusTabs(){
   document.getElementById('status-tabs').innerHTML = tabs.map(([v,label])=>
     `<button class="${state.statusTab===v?'active':''}" onclick="setStatusTab('${v}')">${label}<span class="cnt">${counts[v]}</span></button>`).join('');
 }
-function setStatusTab(v){ state.statusTab=v; renderStatusTabs(); if(state.view==='list') renderList(); else renderKanban(); }
+function setStatusTab(v){ state.statusTab=v; renderStatusTabs(); renderView(); }
 function visibleSet(){
   if(!hasFilter()) return null; // null = 전체 표시
   const vis=new Set();
@@ -392,13 +422,17 @@ function fillSelect(id,vals){ const el=document.getElementById(id),cur=el.value;
 /* ---------- view switch ---------- */
 function setView(v){
   state.view=v;
+  document.getElementById('tab-today').classList.toggle('active',v==='today');
   document.getElementById('tab-list').classList.toggle('active',v==='list');
   document.getElementById('tab-kanban').classList.toggle('active',v==='kanban');
+  document.getElementById('today-view').style.display=v==='today'?'block':'none';
   document.getElementById('list-view').style.display=v==='list'?'block':'none';
   document.getElementById('kanban-view').style.display=v==='kanban'?'block':'none';
+  document.getElementById('status-tabs').style.display=v==='today'?'none':'flex';
   render();
 }
-function render(){ refreshFilterOptions(); renderStatusTabs(); if(state.view==='list') renderList(); else renderKanban(); }
+function renderView(){ if(state.view==='today') renderToday(); else if(state.view==='list') renderList(); else renderKanban(); }
+function render(){ refreshFilterOptions(); renderStatusTabs(); renderView(); }
 
 /* ---------- list (tree) ---------- */
 function renderList(){
@@ -514,7 +548,7 @@ function toggleAssignee(id,person,on){
   if(on){ if(!sel.includes(person)) sel.push(person); } else { sel=sel.filter(p=>p!==person); }
   const order=allPeople(); sel.sort((a,b)=>order.indexOf(a)-order.indexOf(b));
   t.assignee=sel.join(', '); save();
-  renderStatusTabs(); if(state.view==='list') renderList(); else renderKanban();
+  renderStatusTabs(); renderView();
 }
 function addPersonTo(id){
   const name=prompt('새 담당자 이름'); if(name===null) return;
@@ -534,8 +568,7 @@ function projSummary(proj){
 function updateField(id,field,value){
   const t=byId(id); if(!t) return;
   t[field]=value; save();
-  renderStatusTabs();
-  if(state.view==='list') renderList(); else renderKanban();
+  renderStatusTabs(); renderView();
 }
 /* 인라인 하위/작업 추가 */
 function startNewSub(parentId){
@@ -604,6 +637,82 @@ function onDragEnd(e){ e.currentTarget.classList.remove('dragging'); dragId=null
 function onDragOver(e){ e.preventDefault(); e.currentTarget.classList.add('dragover'); }
 function onDragLeave(e){ e.currentTarget.classList.remove('dragover'); }
 function onDrop(e,status){ e.preventDefault(); e.currentTarget.classList.remove('dragover'); const t=byId(dragId); if(t&&t.status!==status){ t.status=status; save(); renderKanban(); } }
+
+/* ---------- today (투데이 투두) ---------- */
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function addDaysStr(s,n){ const d=new Date(s); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function renderToday(){
+  const T=todayStr(), WEEK=addDaysStr(T,7);
+  const wd=['일','월','화','수','목','금','토'][new Date().getDay()];
+  const pool=state.tasks.filter(t=>matchBasic(t));
+  const over=[],today=[],doing=[],soon=[];
+  pool.forEach(t=>{
+    const st=t.status||'진행예정';
+    if(st==='완료') return;
+    const s=t.start||'', e=t.end||'';
+    if(e && e<T){ over.push(t); }
+    else if(e===T || s===T || (s && e && s<=T && e>=T)){ today.push(t); }
+    else if(st==='진행중'){ doing.push(t); }
+    else if(s && s>T && s<=WEEK){ soon.push(t); }
+  });
+  let html=`<div class="today-head">
+    <h2>오늘 할 일</h2>
+    <span class="sub">${T.replace(/-/g,'. ')} (${wd})</span>
+  </div>
+  <div class="today-stats">
+    <div class="stat"><div class="n">${over.length}</div><div class="l">지연</div></div>
+    <div class="stat"><div class="n">${today.length}</div><div class="l">오늘 마감/진행</div></div>
+    <div class="stat"><div class="n">${soon.length}</div><div class="l">이번 주 예정</div></div>
+    <div class="stat"><div class="n">${doing.length}</div><div class="l">진행 중(기한 미정)</div></div>
+  </div>`;
+  const sections=[
+    ['지연 (기한 지남)',over,true],
+    ['오늘 할 일',today,false],
+    ['이번 주 예정',soon,false],
+  ];
+  let any=false;
+  sections.forEach(([title,items,isOver])=>{
+    if(!items.length) return; any=true;
+    items.sort(cmpTask);
+    html+=`<div class="todo-section"><h3>${title}<span class="c">${items.length}</span></h3><div class="todo-list">`;
+    items.forEach(t=>{ html+=todoItem(t,T,isOver); });
+    html+=`</div></div>`;
+  });
+  if(!any && !doing.length) html+=`<div class="empty-today">🎉 오늘 처리할 일정 기반 업무가 없습니다.</div>`;
+  // 기한 미정 진행 중: 기본 접힘
+  if(doing.length){
+    doing.sort(cmpTask);
+    const open=state.showOngoing;
+    html+=`<div class="todo-section">
+      <h3 style="cursor:pointer" onclick="state.showOngoing=!state.showOngoing;renderToday()">
+        <span style="color:var(--text-muted);font-size:11px">${open?'▼':'▶'}</span>
+        진행 중 · 기한 미정 <span class="c">${doing.length}</span></h3>`;
+    if(open){ html+=`<div class="todo-list">`; doing.forEach(t=>{ html+=todoItem(t,T,false); }); html+=`</div>`; }
+    html+=`</div>`;
+  }
+  document.getElementById('today-view').innerHTML=html;
+}
+function todoItem(t,T,isOver){
+  let due='';
+  if(t.end){
+    if(isOver){ const n=daysBetween(t.end,T); due=`<span class="todo-due">마감 ${esc(t.end)} <strong>(${n}일 지남)</strong></span>`; }
+    else if(t.end===T){ due=`<span class="todo-due"><strong>오늘 마감</strong></span>`; }
+    else { due=`<span class="todo-due">~ ${esc(t.end)}</span>`; }
+  } else if(t.start===T){ due=`<span class="todo-due"><strong>오늘 시작</strong></span>`; }
+  return `<div class="todo-item">
+    <input type="checkbox" title="완료 처리" onchange="updateField('${t.id}','status', this.checked?'완료':'진행중')">
+    <div class="todo-main">
+      <span class="todo-name" onclick="openModal('${t.id}')">${esc(t.task)||'(제목 없음)'}</span>
+      <div class="todo-meta">
+        <span class="todo-proj">${esc(t.project)}</span>
+        ${t.assignee?`<span>👤 ${esc(t.assignee)}</span>`:''}
+        ${t.category?`<span>${esc(t.category)}</span>`:''}
+        ${due}
+      </div>
+    </div>
+  </div>`;
+}
 
 /* ---------- modal ---------- */
 function openModal(id){
@@ -789,7 +898,7 @@ function openSyncSettings(){
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
 document.addEventListener('click',()=>closeAssigneeMenu());   // 팝오버 바깥 클릭 시 닫기
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeAssigneeMenu(); closeModal(); } });
-loadTitle(); load(); render(); updateSyncUI();
+loadTitle(); load(); updateSyncUI(); setView(state.view);
 if(getSyncUrl()) pullFromSheet();   // 공유 연결돼 있으면 시트 데이터로 갱신
 </script>
 </body>
