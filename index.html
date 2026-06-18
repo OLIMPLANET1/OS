@@ -30,6 +30,9 @@
   .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
   .nav-item .ni{width:18px;text-align:center;color:var(--text-muted);font-size:13px;}
   .nav-item.active .ni{color:var(--accent);}
+  .nav-group{font-size:11px;font-weight:700;color:var(--text-muted);padding:14px 10px 5px;letter-spacing:.02em;}
+  .nav-group:first-child{padding-top:2px;}
+  .db-frame{width:100%;height:calc(100vh - 132px);border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);}
   .app-main{flex:1;min-width:0;}
   .board-tools{display:inline-flex;align-items:center;gap:8px;}
 
@@ -305,9 +308,12 @@
 <aside class="sidebar">
   <div class="side-brand"><span class="dot"></span><span>사업 1팀</span></div>
   <nav class="side-nav">
+    <div class="nav-group">일정 관리</div>
     <button class="nav-item" id="nav-today" onclick="setView('today')"><span class="ni">✓</span><span>오늘 업무</span></button>
     <button class="nav-item active" id="nav-board" onclick="setView(state.lastBoardView||'list')"><span class="ni">▦</span><span>스케줄 보드</span></button>
     <button class="nav-item" id="nav-report" onclick="setView('report')"><span class="ni">▤</span><span>성과</span></button>
+    <div class="nav-group">고객 관리</div>
+    <button class="nav-item" id="nav-db" onclick="setView('db')"><span class="ni">◍</span><span>고객 DB</span></button>
   </nav>
 </aside>
 <div class="app-main">
@@ -362,6 +368,7 @@
 <main>
   <div id="today-view"></div>
   <div id="report-view" style="display:none"></div>
+  <div id="db-view" style="display:none"></div>
   <div id="list-view" style="display:none">
     <div class="status-tabs" id="list-status-tabs"></div>
     <div class="toolbar">
@@ -541,7 +548,7 @@ function descendants(id){ let out=[]; childrenOf(id).forEach(c=>{ out.push(c); o
 function projColor(name){ let h=0; name=name||''; for(let i=0;i<name.length;i++) h=name.charCodeAt(i)+((h<<5)-h); return `hsl(${Math.abs(h)%360} 55% 48%)`; }
 function initials(name){ return (name||'').trim().slice(0,2)||'–'; }
 /* 담당자 아바타: 단일 이니셜 + 고유 배경색(중복 금지). 찰스/안나는 고정. */
-const RESERVED_AV = { '찰스':{letter:'J',color:'#2563eb',fg:'#fff'}, '안나':{letter:'A',color:'#facc15',fg:'#1f2937'} };
+const RESERVED_AV = { '찰스':{letter:'C',color:'#2563eb',fg:'#fff'}, '안나':{letter:'A',color:'#facc15',fg:'#1f2937'} };
 const AV_PALETTE = ['#16a34a','#dc2626','#9333ea','#0891b2','#db2777','#ea580c','#0d9488','#7c3aed','#65a30d','#c2410c','#0369a1','#be123c','#4d7c0f','#a21caf'];
 function usedColors(){ const s=new Set(); Object.values(RESERVED_AV).forEach(o=>s.add(o.color)); Object.values(state.peopleColors).forEach(c=>s.add(c)); return s; }
 function ensurePersonColor(name){
@@ -615,12 +622,14 @@ function updateChrome(){
   document.getElementById('nav-board').classList.toggle('active', board);
   document.getElementById('nav-today').classList.toggle('active', v==='today');
   document.getElementById('nav-report').classList.toggle('active', v==='report');
+  const navDb=document.getElementById('nav-db'); if(navDb) navDb.classList.toggle('active', v==='db');
   const bt=document.querySelector('.board-tools'); if(bt) bt.style.display=board?'inline-flex':'none';
   // 상단 제목: 탭별
   const titleEl=document.getElementById('board-title');
   if(titleEl){
     if(v==='today'){ titleEl.textContent='오늘 할 일'; titleEl.contentEditable='false'; titleEl.classList.add('static'); }
     else if(v==='report'){ titleEl.textContent='성과 리포트'; titleEl.contentEditable='false'; titleEl.classList.add('static'); }
+    else if(v==='db'){ titleEl.textContent='고객 DB'; titleEl.contentEditable='false'; titleEl.classList.add('static'); }
     else { titleEl.textContent=localStorage.getItem(TITLE_KEY)||'프로젝트 스케줄 보드'; titleEl.contentEditable='true'; titleEl.classList.remove('static'); }
   }
   const n=activeFilterCount(), b=document.getElementById('filter-badge');
@@ -681,15 +690,22 @@ function refreshDatalists(){
 function setView(v){
   state.view=v;
   if(v!=='today'&&v!=='report') state.lastBoardView=v;
-  ['today','report','list','kanban'].forEach(x=>{ const el=document.getElementById(x+'-view'); if(el) el.style.display=(v===x)?'block':'none'; });
+  ['today','report','db','list','kanban'].forEach(x=>{ const el=document.getElementById(x+'-view'); if(el) el.style.display=(v===x)?'block':'none'; });
   hideMenus();
   render();
 }
 function renderView(){
   if(state.view==='today') renderToday();
   else if(state.view==='report') renderReport();
+  else if(state.view==='db') renderDb();
   else if(state.view==='list') renderList();
   else renderKanban();
+}
+function renderDb(){
+  const el=document.getElementById('db-view');
+  if(!el.querySelector('iframe')){   // 한 번만 로드(재렌더 시 새로고침 방지)
+    el.innerHTML='<iframe class="db-frame" src="https://olimplanet1.github.io/DB/" title="고객 DB" loading="lazy"></iframe>';
+  }
 }
 function render(){ updateChrome(); refreshDatalists(); renderView(); }
 /* ---------- 테이블 뷰 (그룹 + 펼치기 + 상태 탭, 통합) ---------- */
