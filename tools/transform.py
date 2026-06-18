@@ -35,8 +35,8 @@ def parse_date(s):
 def norm_status(s):
     s = clean(s)
     if s == "대기중":
-        return "진행예정"
-    return s if s in {"진행중", "완료", "진행예정"} else ""
+        return "대기"
+    return s if s in {"진행중", "완료", "대기"} else ""
 
 _ids = set()
 def uid(seed):
@@ -134,7 +134,7 @@ for r in rows[3:]:
     edate, enote = parse_date(end)
     children.append(dict(
         project=cur_proj, task=task, category=cur_cat, assignee="안나",
-        start=sdate, end=edate, status=norm_status(status) or "진행예정", doc=doc,
+        start=sdate, end=edate, status=norm_status(status) or "대기", doc=doc,
         progress=join_notes(prog, ("일정:" + snote) if snote else "", ("기한:" + enote) if enote else ""),
         issue=issue, src="anna",
     ))

@@ -89,7 +89,7 @@
 
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:20px;white-space:nowrap;}
   .badge .bdot{width:6px;height:6px;border-radius:50%;}
-  .st-진행예정,.st-대기중{background:#f4f4f5;color:#52525b;} .st-진행예정 .bdot,.st-대기중 .bdot{background:var(--st-wait);}
+  .st-대기,.st-대기중{background:#f4f4f5;color:#52525b;} .st-대기 .bdot,.st-대기중 .bdot{background:var(--st-wait);}
   .st-진행중{background:var(--accent-soft);color:#1d4ed8;} .st-진행중 .bdot{background:var(--st-progress);}
   .st-완료{background:#dcfce7;color:#15803d;} .st-완료 .bdot{background:var(--st-done);}
 
@@ -283,7 +283,7 @@
       <div class="field"><label>종료일(예상)</label><input type="date" id="m-end"></div>
       <div class="field">
         <label>상태</label>
-        <select id="m-status"><option>진행예정</option><option>진행중</option><option>완료</option></select>
+        <select id="m-status"><option>대기</option><option>진행중</option><option>완료</option></select>
       </div>
       <div class="field">
         <label>결과물/진행문서 (URL 또는 메모)</label>
@@ -310,7 +310,7 @@
 <script src="data.js"></script>
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
-const STATUSES = ['진행예정','진행중','완료'];
+const STATUSES = ['대기','진행중','완료'];
 let state = { tasks: [], projects: [], people: [], view:'today', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false };
 
 /* ---------- persistence ---------- */
@@ -331,8 +331,8 @@ function peopleFromTasks(){
 }
 function allPeople(){ const out=[...state.people]; peopleFromTasks().forEach(p=>{ if(!out.includes(p)) out.push(p); }); return out; }
 function migrate(){
-  // 구버전 상태값 '대기중' → '진행예정'
-  state.tasks.forEach(t=>{ if(t.status==='대기중') t.status='진행예정'; });
+  // 구버전 상태값 '대기중'/'진행예정' → '대기'
+  state.tasks.forEach(t=>{ if(t.status==='대기중'||t.status==='진행예정') t.status='대기'; });
 }
 function projectsFromTasks(){
   const seen=[]; state.tasks.slice().sort((a,b)=>(a.order||0)-(b.order||0))
@@ -378,7 +378,7 @@ function matchBasic(t){
 }
 function matchTask(t){
   if(!matchBasic(t)) return false;
-  if(state.statusTab && (t.status||'진행예정')!==state.statusTab) return false;
+  if(state.statusTab && (t.status||'대기')!==state.statusTab) return false;
   return true;
 }
 function hasFilter(){
@@ -387,7 +387,7 @@ function hasFilter(){
 }
 function renderStatusTabs(){
   const counts={'':state.tasks.length};
-  STATUSES.forEach(s=>counts[s]=state.tasks.filter(t=>(t.status||'진행예정')===s).length);
+  STATUSES.forEach(s=>counts[s]=state.tasks.filter(t=>(t.status||'대기')===s).length);
   const tabs=[['','전체'],...STATUSES.map(s=>[s,s])];
   document.getElementById('status-tabs').innerHTML = tabs.map(([v,label])=>
     `<button class="${state.statusTab===v?'active':''}" onclick="setStatusTab('${v}')">${label}<span class="cnt">${counts[v]}</span></button>`).join('');
@@ -516,7 +516,7 @@ function renderRow(t,depth,vis){
     <td>${cellSelect(t.id,'priority',t.priority,['','높음','보통','낮음'])}</td>
     <td><input type="date" class="cell-date" value="${esc(t.start)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','start',this.value)"></td>
     <td><input type="date" class="cell-date" value="${esc(t.end)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','end',this.value)"></td>
-    <td>${cellSelect(t.id,'status',t.status||'진행예정',STATUSES)}</td>
+    <td>${cellSelect(t.id,'status',t.status||'대기',STATUSES)}</td>
     <td class="hide-sm" onclick="event.stopPropagation();openModal('${t.id}')">${docCell(t.doc)}</td>
   </tr>`;
   if(kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
@@ -574,12 +574,12 @@ function updateField(id,field,value){
 function startNewSub(parentId){
   const p=byId(parentId); if(!p) return;
   const id=uid();
-  state.tasks.push({id,parentId,project:p.project,category:p.category,assignee:p.assignee,priority:'',start:'',end:'',status:'진행예정',doc:'',progress:'',issue:'',order:Date.now()});
+  state.tasks.push({id,parentId,project:p.project,category:p.category,assignee:p.assignee,priority:'',start:'',end:'',status:'대기',doc:'',progress:'',issue:'',order:Date.now()});
   state.expanded[parentId]=true; state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
 }
 function startNewTop(project){
   const id=uid();
-  state.tasks.push({id,parentId:null,project,category:'',assignee:'',priority:'',start:'',end:'',status:'진행예정',doc:'',progress:'',issue:'',order:Date.now()});
+  state.tasks.push({id,parentId:null,project,category:'',assignee:'',priority:'',start:'',end:'',status:'대기',doc:'',progress:'',issue:'',order:Date.now()});
   if(project && !state.projects.includes(project)) state.projects.unshift(project);
   state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
 }
@@ -608,7 +608,7 @@ function renderKanban(){
   const tops=topLevel().filter(t=>!vis||vis.has(t.id));
   let html='<div class="kanban">';
   STATUSES.forEach(st=>{
-    const list=tops.filter(t=>(t.status||'진행예정')===st);
+    const list=tops.filter(t=>(t.status||'대기')===st);
     html+=`<div class="kcol" data-status="${st}" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${st}')">
       <div class="kcol-head"><span class="badge st-${st}"><span class="bdot"></span>${st}</span><span class="kcount">${list.length}</span></div>`;
     list.forEach(t=>{
@@ -648,7 +648,7 @@ function renderToday(){
   const pool=state.tasks.filter(t=>matchBasic(t));
   const over=[],today=[],doing=[],soon=[];
   pool.forEach(t=>{
-    const st=t.status||'진행예정';
+    const st=t.status||'대기';
     if(st==='완료') return;
     const s=t.start||'', e=t.end||'';
     if(e && e<T){ over.push(t); }
@@ -726,7 +726,7 @@ function openModal(id){
   else pb.classList.remove('show');
   const v=(f,val)=>document.getElementById(f).value=val||'';
   v('m-task',t?.task); v('m-project',t?.project); v('m-category',t?.category); renderAssigneeBox(t?t.assignee:'');
-  v('m-priority',t?.priority||''); v('m-start',t?.start); v('m-end',t?.end); v('m-status',t?.status||'진행예정');
+  v('m-priority',t?.priority||''); v('m-start',t?.start); v('m-end',t?.end); v('m-status',t?.status||'대기');
   v('m-doc',t?.doc); v('m-progress',t?.progress); v('m-issue',t?.issue);
   renderSubsSection(id);
   document.getElementById('overlay').classList.add('open');
@@ -741,7 +741,7 @@ function openSub(parentId){
   pb.classList.add('show'); pb.innerHTML=`상위 작업: <b>${esc(parent.task)}</b> (${esc(parent.project)})`;
   const v=(f,val)=>document.getElementById(f).value=val||'';
   v('m-task',''); v('m-project',parent.project); v('m-category',parent.category); renderAssigneeBox(parent.assignee);
-  v('m-priority',''); v('m-start',''); v('m-end',''); v('m-status','진행예정'); v('m-doc',''); v('m-progress',''); v('m-issue','');
+  v('m-priority',''); v('m-start',''); v('m-end',''); v('m-status','대기'); v('m-doc',''); v('m-progress',''); v('m-issue','');
   document.getElementById('subs-section').style.display='none';
   document.getElementById('overlay').classList.add('open');
   setTimeout(()=>document.getElementById('m-task').focus(),50);
@@ -775,7 +775,7 @@ function renderSubsSection(id){
   document.getElementById('subs-count').textContent=`(${kids.length})`;
   const el=document.getElementById('subs-list');
   el.innerHTML = kids.length ? kids.map(c=>`<div class="sub-item" onclick="openModal('${c.id}')">
-      <span class="badge st-${c.status||'진행예정'}"><span class="bdot"></span>${esc(c.status||'진행예정')}</span>
+      <span class="badge st-${c.status||'대기'}"><span class="bdot"></span>${esc(c.status||'대기')}</span>
       <span class="s-name">${esc(c.task)}</span>
       <span class="who-chip">${esc(c.assignee)||''}</span>
     </div>`).join('') : '<div class="muted" style="font-size:12px;padding:4px 8px">하위 작업이 없습니다.</div>';
