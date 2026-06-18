@@ -138,6 +138,12 @@
   tr.grp .pname-edit{opacity:0;}
   tr.grp:hover .pname-edit{opacity:1;}
   tr.empty-row td{padding:11px 12px;color:var(--text-muted);}
+  .drag-handle{cursor:grab;color:var(--text-muted);font-size:12px;opacity:0;flex:none;line-height:1;}
+  tbody tr:hover .drag-handle{opacity:.6;}
+  .drag-handle:hover{opacity:1!important;color:var(--text);}
+  .drag-handle:active{cursor:grabbing;}
+  tr.drop-target>td{box-shadow:inset 0 0 0 2px var(--accent);background:var(--accent-soft);}
+  tr.grp.drop-target>td{box-shadow:inset 0 0 0 2px var(--accent);}
   tr.child-row{background:#fcfcfd;}
   tr.child-row td:first-child{color:var(--text-soft);}
   .name-cell{display:flex;align-items:center;gap:6px;min-width:240px;}
@@ -740,7 +746,7 @@ function renderList(){
     const collapsed=state.collapsed[proj];
     const total=list.reduce((n,t)=>n+1+descendants(t.id).length,0);
     const sum=projSummary(proj);
-    html+=`<tr class="grp${collapsed?' collapsed':''}"><td colspan="8"><div class="grp-head">
+    html+=`<tr class="grp${collapsed?' collapsed':''}" ondragover="onRowDragOver(event)" ondragleave="onRowDragLeave(event)" ondrop="dropToProject(event,'${esc(proj)}')"><td colspan="8"><div class="grp-head">
         <span class="chev" onclick="toggleGroup('${esc(proj)}')">▼</span>
         <span class="gname" onclick="toggleGroup('${esc(proj)}')">${esc(proj)}</span>
         <span class="pcount">${total}</span>
@@ -786,8 +792,9 @@ function renderRow(t,depth,vis){
   const twisty = kids.length
     ? `<span class="twisty has" onclick="event.stopPropagation();toggleExpand('${t.id}')">${open?'▼':'▶'}</span>`
     : `<span class="twisty empty">•</span>`;
-  let html=`<tr class="${depth?'child-row':''}">
+  let html=`<tr class="${depth?'child-row':''}" ondragover="onRowDragOver(event)" ondragleave="onRowDragLeave(event)" ondrop="dropAsChild(event,'${t.id}')">
     <td><div class="name-cell" style="padding-left:${depth*18}px">
+      <span class="drag-handle" draggable="true" ondragstart="onRowDragStart(event,'${t.id}')" ondragend="onRowDragEnd(event)" title="드래그하여 이동">⠿</span>
       ${twisty}<span class="ttext" onclick="event.stopPropagation();openModal('${t.id}')" title="자세히 보기">${esc(t.task)||'<span class=muted>(제목 없음)</span>'}</span>
       ${prog?`<span class="miniprog">${prog.done}/${prog.total}<span class="bar"><i style="width:${prog.pct}%"></i></span></span>`:''}
       <button class="subadd" onclick="event.stopPropagation();startNewSub('${t.id}')">＋ 하위</button>
@@ -802,6 +809,27 @@ function renderRow(t,depth,vis){
   </tr>`;
   if(kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
   return html;
+}
+/* 행 드래그: 상위 승격 / 다른 작업 하위로 이동 */
+let rowDragId=null;
+function onRowDragStart(e,id){ rowDragId=id; e.dataTransfer.effectAllowed='move'; e.stopPropagation(); }
+function onRowDragEnd(e){ rowDragId=null; document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target')); }
+function onRowDragOver(e){ if(!rowDragId) return; e.preventDefault(); e.currentTarget.classList.add('drop-target'); }
+function onRowDragLeave(e){ e.currentTarget.classList.remove('drop-target'); }
+function isAncestor(aId,bId){ let cur=byId(bId); while(cur && cur.parentId){ if(cur.parentId===aId) return true; cur=byId(cur.parentId); } return false; }
+function dropAsChild(e,targetId){
+  e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove('drop-target');
+  const t=byId(rowDragId), p=byId(targetId);
+  if(!t||!p||rowDragId===targetId) return;
+  if(isAncestor(rowDragId,targetId)){ uiAlert('자기 자신의 하위로는 옮길 수 없습니다.'); return; }
+  t.parentId=targetId; t.project=p.project; t.order=Date.now();
+  state.expanded[targetId]=true; save(); renderList();
+}
+function dropToProject(e,proj){
+  e.preventDefault(); e.currentTarget.classList.remove('drop-target');
+  const t=byId(rowDragId); if(!t) return;
+  t.parentId=null; t.project=proj; t.order=Date.now();
+  save(); renderList();
 }
 function distinct(field){ return [...new Set(state.tasks.map(t=>t[field]).filter(Boolean))].sort(); }
 function assigneeCell(t){
