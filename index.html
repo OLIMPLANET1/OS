@@ -34,6 +34,9 @@
   .plink-edit:hover{background:var(--bg-muted);color:var(--text);}
   .rp-doc{font-size:12px;color:var(--accent);text-decoration:none;white-space:nowrap;}
   .rp-doc:hover{text-decoration:underline;}
+  .doc-cell{display:inline-flex;align-items:center;gap:6px;}
+  .doc-edit{border:none;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;border-radius:5px;padding:2px 6px;white-space:nowrap;}
+  .doc-edit:hover{background:var(--bg-muted);color:var(--text);}
 
   .view-toggle{display:inline-flex;background:var(--bg-muted);border-radius:var(--radius);padding:3px;}
   .view-toggle button{border:none;background:transparent;color:var(--text-soft);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:500;}
@@ -415,6 +418,19 @@ function avatarsHtml(assignee){
 }
 function progressOf(id){ const d=descendants(id); if(!d.length) return null; const done=d.filter(x=>x.status==='완료').length; return {done,total:d.length,pct:Math.round(done/d.length*100)}; }
 function docCell(doc){ if(!doc) return '–'; if(/^https?:\/\//i.test(doc)) return `<a class="doc-link" href="${esc(doc)}" target="_blank" onclick="event.stopPropagation()">열기 ↗</a>`; return `<span class="muted">${esc(doc)}</span>`; }
+function docCellEditable(t){
+  const has=t.doc && /^https?:\/\//i.test(t.doc);
+  const link = has ? `<a class="doc-link" href="${esc(t.doc)}" target="_blank" onclick="event.stopPropagation()">열기 ↗</a>`
+                   : (t.doc?`<span class="muted">${esc(t.doc)}</span>`:'');
+  const btn = `<button class="doc-edit" title="결과물/문서 링크" onclick="event.stopPropagation();editDoc('${t.id}')">${t.doc?'✎':'＋ 링크'}</button>`;
+  return `<span class="doc-cell">${link}${btn}</span>`;
+}
+function editDoc(id){
+  const t=byId(id); if(!t) return;
+  const u=prompt('결과물/문서 링크(URL)를 입력하세요. (비우면 삭제)', t.doc||'');
+  if(u===null) return;
+  t.doc=u.trim(); save(); renderList();
+}
 /* 날짜 정규화/표기 */
 function toISODate(v){
   if(v==null||v==='') return '';
@@ -538,7 +554,6 @@ function renderList(){
         <span class="pname">${esc(proj)}</span>
         <span class="pcount">${total}</span>
         <span class="pmeta">${sum.dateStr?`일정 ${sum.dateStr}`:''}${sum.who.length?`${sum.dateStr?'  ·  ':''}담당 ${esc(sum.who.join(', '))}`:''}</span>
-        ${plinkHtml(proj)}
       </div>
       <div class="table-wrap">`;
     if(list.length){
@@ -597,7 +612,7 @@ function renderRow(t,depth,vis){
     <td><input type="date" class="cell-date" value="${esc(t.start)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','start',this.value)"></td>
     <td><input type="date" class="cell-date" value="${esc(t.end)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','end',this.value)"></td>
     <td>${cellSelect(t.id,'status',t.status||'대기',STATUSES)}</td>
-    <td class="hide-sm" onclick="event.stopPropagation();openModal('${t.id}')">${docCell(t.doc)}</td>
+    <td class="hide-sm">${docCellEditable(t)}</td>
   </tr>`;
   if(kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
   return html;
@@ -886,10 +901,8 @@ function renderReport(){
   document.getElementById('report-view').innerHTML=html;
 }
 function rpItem(t,mark,dateLabel){
-  const plink=state.projectLinks[t.project]||'';
   const docLink = (t.doc && /^https?:\/\//i.test(t.doc))
-    ? `<a class="rp-doc" href="${esc(t.doc)}" target="_blank" onclick="event.stopPropagation()">결과물 ↗</a>`
-    : (plink?`<a class="rp-doc" href="${esc(plink)}" target="_blank" onclick="event.stopPropagation()">자료 ↗</a>`:'');
+    ? `<a class="rp-doc" href="${esc(t.doc)}" target="_blank" onclick="event.stopPropagation()">결과물 ↗</a>` : '';
   return `<div class="rp-item">
     <span class="mark">${mark}</span>
     <span class="rp-name" onclick="openModal('${t.id}')">${esc(t.task)||'(제목 없음)'}</span>
