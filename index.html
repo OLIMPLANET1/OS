@@ -41,6 +41,35 @@
   .doc-edit{border:none;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;border-radius:5px;padding:2px 6px;white-space:nowrap;}
   .doc-edit:hover{background:var(--bg-muted);color:var(--text);}
 
+  /* 상단 툴바 (회사 OS 폼) */
+  .toolbar-right{display:flex;align-items:center;gap:8px;}
+  .vtab{border:none;background:transparent;color:var(--text-soft);font-size:13px;font-weight:600;padding:7px 10px;border-radius:var(--radius);cursor:pointer;}
+  .vtab:hover{background:var(--bg-muted);color:var(--text);}
+  .vtab.active{background:var(--accent-soft);color:var(--accent);}
+  .pop-wrap{position:relative;display:inline-flex;align-items:center;}
+  .icon-tool{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--border-strong);background:var(--bg);color:var(--text-soft);width:34px;height:34px;border-radius:var(--radius);cursor:pointer;position:relative;}
+  .icon-tool:hover{background:var(--bg-soft);color:var(--text);}
+  #more-btn{font-size:18px;line-height:1;}
+  .dot-badge{position:absolute;top:-5px;right:-5px;min-width:15px;height:15px;padding:0 4px;border-radius:9px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;}
+  .pop-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:60;background:var(--bg);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;min-width:190px;display:none;}
+  .pop-menu.open{display:block;}
+  .pm-item{display:flex;flex-direction:column;gap:1px;padding:9px 12px;border-radius:7px;cursor:pointer;font-size:13px;}
+  .pm-item:hover{background:var(--bg-soft);}
+  .pm-item b{font-weight:600;}
+  .pm-item span{font-size:11px;color:var(--text-muted);}
+  .pm-item.simple{flex-direction:row;color:var(--text);}
+  .pm-filter{min-width:240px;padding:10px;}
+  .fm-sec{padding:8px 4px;border-bottom:1px solid var(--border);}
+  .fm-sec:last-of-type{border-bottom:none;}
+  .fm-title{font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;}
+  .fm-radio{display:inline-flex;align-items:center;gap:6px;font-size:13px;margin-right:12px;cursor:pointer;padding:3px 0;}
+  .fm-select{width:100%;font-size:13px;padding:7px 9px;}
+  .fm-foot{padding-top:8px;display:flex;justify-content:flex-end;}
+  .search-wrap .search-input{width:0;padding:8px 0;border:none;opacity:0;transition:width .18s, opacity .15s, padding .18s;pointer-events:none;}
+  .search-wrap.open .search-input{width:230px;padding:8px 12px;border:1px solid var(--border-strong);opacity:1;pointer-events:auto;border-radius:var(--radius);}
+  .search-wrap.open #search-btn{display:none;}
+  .sync-status{font-size:12px;color:var(--text-muted);white-space:nowrap;}
+
   .view-toggle{display:inline-flex;background:var(--bg-muted);border-radius:var(--radius);padding:3px;}
   .view-toggle button{border:none;background:transparent;color:var(--text-soft);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:500;}
   .view-toggle button.active{background:var(--bg);color:var(--text);box-shadow:var(--shadow);}
@@ -245,33 +274,54 @@
     <div class="brand"><span class="dot"></span><h1 id="board-title" contenteditable="true" spellcheck="false" title="클릭하여 제목 수정"
       onblur="saveTitle(this.innerText)"
       onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">프로젝트 스케줄 보드</h1></div>
-    <div class="view-toggle">
-      <button id="tab-list" class="active" onclick="setView('list')">리스트</button>
-      <button id="tab-kanban" onclick="setView('kanban')">칸반</button>
+    <div class="toolbar-right">
+      <button class="vtab" id="tab-today" onclick="setView('today')">오늘</button>
+      <button class="vtab" id="tab-report" onclick="setView('report')">성과</button>
+      <div class="view-toggle">
+        <button id="tab-kanban" onclick="setView('kanban')">칸반 뷰</button>
+        <button id="tab-table" onclick="setView('table')">테이블 뷰</button>
+        <button id="tab-list" class="active" onclick="setView('list')">일반 모드</button>
+      </div>
+      <div class="pop-wrap">
+        <button class="icon-tool" id="filter-btn" title="정렬 및 필터" onclick="toggleFilterMenu(event)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+          <span class="dot-badge" id="filter-badge" style="display:none"></span>
+        </button>
+        <div class="pop-menu pm-filter" id="filter-menu"></div>
+      </div>
+      <div class="pop-wrap search-wrap">
+        <button class="icon-tool" id="search-btn" title="검색" onclick="toggleSearch()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <input type="text" id="search" class="search-input" placeholder="클라이언트·작업·담당자 검색…" oninput="state.search=this.value;render()">
+      </div>
+      <div class="pop-wrap">
+        <button class="btn btn-primary" onclick="toggleCreateMenu(event)">＋ 새로 만들기</button>
+        <div class="pop-menu" id="create-menu">
+          <div class="pm-item" onclick="createNew('project')"><b>프로젝트</b><span>새 프로젝트 추가</span></div>
+          <div class="pm-item" onclick="createNew('task')"><b>작업</b><span>새 작업(일지) 추가</span></div>
+        </div>
+      </div>
+      <div class="pop-wrap">
+        <button class="icon-tool" id="more-btn" title="더보기" onclick="toggleMoreMenu(event)">⋯</button>
+        <div class="pop-menu" id="more-menu">
+          <div class="pm-item simple" id="pm-pull" style="display:none" onclick="hideMenus();pullFromSheet()">↻ 시트 불러오기</div>
+          <div class="pm-item simple" onclick="hideMenus();openSyncSettings()">🔗 공유 설정</div>
+          <div class="pm-item simple" onclick="hideMenus();exportData()">⬇ 내보내기</div>
+          <div class="pm-item simple" onclick="hideMenus();document.getElementById('importFile').click()">⬆ 가져오기</div>
+          <div class="pm-item simple" onclick="hideMenus();resetToSheet()">↺ 시트 원본으로</div>
+        </div>
+      </div>
+      <span id="sync-status" class="sync-status"></span>
     </div>
-    <button class="btn" onclick="addProject()">＋ 프로젝트</button>
-    <button class="btn btn-primary" onclick="openModal()">＋ 작업 추가</button>
   </div>
-  <div class="filters">
-    <input type="text" class="search" id="search" placeholder="검색 (작업·프로젝트·담당자)" oninput="render()">
-    <span class="filter-label">프로젝트</span>
-    <select id="f-project" onchange="render()"><option value="">전체</option></select>
-    <span class="filter-label">담당자</span>
-    <select id="f-assignee" onchange="render()"><option value="">전체</option></select>
-    <span id="sync-status" class="filter-label" style="margin-left:auto"></span>
-    <button class="btn btn-ghost" id="pull-btn" onclick="pullFromSheet()" style="display:none">↻ 불러오기</button>
-    <button class="btn btn-ghost" onclick="openSyncSettings()">🔗 공유</button>
-    <button class="btn btn-ghost" onclick="exportData()">내보내기</button>
-    <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">가져오기</button>
-    <button class="btn btn-ghost" onclick="resetToSheet()">시트 원본으로</button>
-    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
-  </div>
-  <div class="status-tabs" id="status-tabs"></div>
+  <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
 </header>
 
 <main>
   <div id="today-view"></div>
   <div id="report-view" style="display:none"></div>
+  <div id="table-view" style="display:none"></div>
   <div id="list-view" style="display:none">
     <div class="toolbar">
       <button class="btn btn-ghost btn-sm" onclick="expandAll(true)">모두 펼치기</button>
@@ -363,7 +413,7 @@
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['대기','진행중','완료'];
-let state = { tasks: [], projects: [], people: [], peopleColors:{}, projectLinks:{}, view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'', todayDone:{} };
+let state = { tasks: [], projects: [], people: [], peopleColors:{}, projectLinks:{}, view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', search:'', filterProject:'', filterAssignee:'', sort:'priority', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'', todayDone:{} };
 
 /* ---------- 공용 다이얼로그 (prompt/confirm/alert 대체) ---------- */
 function openDlg(message, withInput, def, okLabel, showCancel){
@@ -437,7 +487,11 @@ function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).sl
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function byId(id){ return state.tasks.find(t=>t.id===id); }
 function prRank(p){ return p==='높음'?0:p==='보통'?1:p==='낮음'?3:2; } // 높음>보통>미지정>낮음
-function cmpTask(a,b){ return prRank(a.priority)-prRank(b.priority) || (a.order||0)-(b.order||0); }
+function cmpTask(a,b){
+  if(state.sort==='recent') return (b.order||0)-(a.order||0);
+  if(state.sort==='old') return (a.order||0)-(b.order||0);
+  return prRank(a.priority)-prRank(b.priority) || (a.order||0)-(b.order||0); // 우선순위순(기본)
+}
 function childrenOf(id){ return state.tasks.filter(t=>t.parentId===id).sort(cmpTask); }
 function topLevel(){ return state.tasks.filter(t=>!t.parentId || !byId(t.parentId)).sort(cmpTask); }
 function descendants(id){ let out=[]; childrenOf(id).forEach(c=>{ out.push(c); out=out.concat(descendants(c.id)); }); return out; }
@@ -497,11 +551,9 @@ function fmtK(v){ const s=toISODate(v); return s? s.replace(/-/g,'.') : ''; }
 
 /* ---------- filtering (tree-aware) ---------- */
 function matchBasic(t){
-  const q=document.getElementById('search').value.trim().toLowerCase();
-  const fp=document.getElementById('f-project').value;
-  const fa=document.getElementById('f-assignee').value;
-  if(fp && t.project!==fp) return false;
-  if(fa && !(t.assignee||'').includes(fa)) return false;
+  const q=(state.search||'').trim().toLowerCase();
+  if(state.filterProject && t.project!==state.filterProject) return false;
+  if(state.filterAssignee && !(t.assignee||'').includes(state.filterAssignee)) return false;
   if(q){ const hay=(t.task+' '+t.project+' '+t.assignee+' '+t.category+' '+t.progress+' '+t.issue).toLowerCase(); if(!hay.includes(q)) return false; }
   return true;
 }
@@ -510,29 +562,46 @@ function matchTask(t){
   if(state.statusTab && (t.status||'대기')!==state.statusTab) return false;
   return true;
 }
-function hasFilter(){
-  return document.getElementById('search').value.trim() || document.getElementById('f-project').value ||
-         document.getElementById('f-assignee').value || state.statusTab;
+function hasFilter(){ return (state.search||'').trim() || state.filterProject || state.filterAssignee || state.statusTab; }
+function activeFilterCount(){ let n=0; if(state.filterProject)n++; if(state.filterAssignee)n++; if(state.statusTab)n++; if(state.sort!=='priority')n++; return n; }
+/* ---------- 상단 컨트롤(뷰 active / 필터 배지) ---------- */
+function updateChrome(){
+  ['kanban','table','list'].forEach(v=>{ const el=document.getElementById('tab-'+v); if(el) el.classList.toggle('active',state.view===v); });
+  document.getElementById('tab-today').classList.toggle('active',state.view==='today');
+  document.getElementById('tab-report').classList.toggle('active',state.view==='report');
+  const n=activeFilterCount(), b=document.getElementById('filter-badge');
+  if(b){ b.style.display=n?'inline-flex':'none'; b.textContent=n||''; }
 }
-function renderStatusTabs(){
-  const counts={'':state.tasks.length};
-  STATUSES.forEach(s=>counts[s]=state.tasks.filter(t=>(t.status||'대기')===s).length);
-  const tabs=[['','전체'],...STATUSES.map(s=>[s,s])];
-  const statusBtns = tabs.map(([v,label])=>{
-    const active = state.view!=='today' && state.view!=='report' && state.statusTab===v;
-    return `<button class="${active?'active':''}" onclick="selectTopTab('status','${v}')">${label}<span class="cnt">${counts[v]}</span></button>`;
-  }).join('');
-  const td=computeToday();
-  const todayBtn = `<button class="${state.view==='today'?'active':''}" style="margin-left:auto" onclick="selectTopTab('today')">오늘 할 일<span class="cnt">${td.over.length+td.today.length+td.soon.length}</span></button>`;
-  const reportBtn = `<button class="${state.view==='report'?'active':''}" onclick="selectTopTab('report')">성과</button>`;
-  document.getElementById('status-tabs').innerHTML = statusBtns + todayBtn + reportBtn;
+/* 정렬 및 필터 드롭다운 */
+function renderFilterMenu(){
+  const projects=[...new Set(state.tasks.map(t=>t.project).filter(Boolean))].sort();
+  const people=allPeople();
+  const sorts=[['priority','우선순위순'],['recent','최신순'],['old','오래된순']];
+  const statuses=[['','전체'],['대기','대기'],['진행중','진행중'],['완료','완료']];
+  const radio=(name,v,cur,label,fn)=>`<label class="fm-radio"><input type="radio" name="${name}" ${v===cur?'checked':''} onclick="${fn}('${v}')"><span>${label}</span></label>`;
+  document.getElementById('filter-menu').innerHTML = `
+    <div class="fm-sec"><div class="fm-title">정렬</div>${sorts.map(([v,l])=>radio('fm-sort',v,state.sort,l,'setSort')).join('')}</div>
+    <div class="fm-sec"><div class="fm-title">상태</div>${statuses.map(([v,l])=>radio('fm-status',v,state.statusTab,l,'setStatusFilter')).join('')}</div>
+    <div class="fm-sec"><div class="fm-title">프로젝트</div>
+      <select class="fm-select" onchange="state.filterProject=this.value;render()"><option value="">전체</option>${projects.map(p=>`<option ${p===state.filterProject?'selected':''}>${esc(p)}</option>`).join('')}</select></div>
+    <div class="fm-sec"><div class="fm-title">담당자</div>
+      <select class="fm-select" onchange="state.filterAssignee=this.value;render()"><option value="">전체</option>${people.map(p=>`<option ${p===state.filterAssignee?'selected':''}>${esc(p)}</option>`).join('')}</select></div>
+    <div class="fm-foot"><button class="btn btn-ghost btn-sm" onclick="clearFilters()">필터 초기화</button></div>`;
 }
-function selectTopTab(kind,val){
-  if(kind==='today'){ setView('today'); return; }
-  if(kind==='report'){ setView('report'); return; }
-  state.statusTab=val;
-  if(state.view==='today'||state.view==='report'){ setView(state.lastBoardView||'list'); }
-  else { render(); }
+function setSort(v){ state.sort=v; render(); }
+function setStatusFilter(v){ state.statusTab=v; render(); }
+function clearFilters(){ state.sort='priority'; state.statusTab=''; state.filterProject=''; state.filterAssignee=''; state.search=''; const s=document.getElementById('search'); if(s) s.value=''; renderFilterMenu(); render(); }
+/* 팝업 메뉴 토글 */
+function hideMenus(){ document.querySelectorAll('.pop-menu.open').forEach(m=>m.classList.remove('open')); }
+function openMenu(id,e){ e.stopPropagation(); const m=document.getElementById(id); const was=m.classList.contains('open'); hideMenus(); closeAssigneeMenu(); if(!was) m.classList.add('open'); }
+function toggleFilterMenu(e){ renderFilterMenu(); openMenu('filter-menu',e); }
+function toggleCreateMenu(e){ openMenu('create-menu',e); }
+function toggleMoreMenu(e){ openMenu('more-menu',e); }
+function createNew(kind){ hideMenus(); if(kind==='project') addProject(); else openModal(); }
+function toggleSearch(){
+  const w=document.querySelector('.search-wrap'), i=document.getElementById('search');
+  const open=w.classList.toggle('open');
+  if(open){ setTimeout(()=>i.focus(),30); } else { i.value=''; state.search=''; render(); }
 }
 function visibleSet(){
   if(!hasFilter()) return null; // null = 전체 표시
@@ -549,37 +618,53 @@ function visibleSet(){
   return vis;
 }
 
-function refreshFilterOptions(){
+function refreshDatalists(){
   const projects=[...new Set(state.tasks.map(t=>t.project).filter(Boolean))].sort();
-  const assignees=[...new Set(state.tasks.flatMap(t=>(t.assignee||'').split(',').map(s=>s.trim())).filter(Boolean))].sort();
   const cats=[...new Set(state.tasks.map(t=>t.category).filter(Boolean))].sort();
-  fillSelect('f-project',projects); fillSelect('f-assignee',assignees);
-  document.getElementById('proj-list').innerHTML=projects.map(p=>`<option value="${esc(p)}">`).join('');
-  document.getElementById('assignee-list').innerHTML=assignees.map(a=>`<option value="${esc(a)}">`).join('');
-  document.getElementById('cat-list').innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join('');
+  const set=(id,vals)=>{ const el=document.getElementById(id); if(el) el.innerHTML=vals.map(v=>`<option value="${esc(v)}">`).join(''); };
+  set('proj-list',projects); set('assignee-list',allPeople()); set('cat-list',cats);
 }
-function fillSelect(id,vals){ const el=document.getElementById(id),cur=el.value; el.innerHTML='<option value="">전체</option>'+vals.map(v=>`<option>${esc(v)}</option>`).join(''); if(vals.includes(cur)) el.value=cur; }
 
 /* ---------- view switch ---------- */
 function setView(v){
   state.view=v;
   if(v!=='today'&&v!=='report') state.lastBoardView=v;
-  document.getElementById('tab-list').classList.toggle('active',v==='list');
-  document.getElementById('tab-kanban').classList.toggle('active',v==='kanban');
-  document.getElementById('today-view').style.display=v==='today'?'block':'none';
-  document.getElementById('report-view').style.display=v==='report'?'block':'none';
-  document.getElementById('list-view').style.display=v==='list'?'block':'none';
-  document.getElementById('kanban-view').style.display=v==='kanban'?'block':'none';
-  document.getElementById('status-tabs').style.display='flex'; // 항상 표시(오늘/성과 탭 포함)
+  ['today','report','table','list','kanban'].forEach(x=>{ const el=document.getElementById(x+'-view'); if(el) el.style.display=(v===x)?'block':'none'; });
+  hideMenus();
   render();
 }
 function renderView(){
   if(state.view==='today') renderToday();
   else if(state.view==='report') renderReport();
+  else if(state.view==='table') renderTable();
   else if(state.view==='list') renderList();
   else renderKanban();
 }
-function render(){ refreshFilterOptions(); renderStatusTabs(); renderView(); }
+function render(){ updateChrome(); refreshDatalists(); renderView(); }
+function renderTable(){
+  const vis=visibleSet();
+  const rows=state.tasks.filter(t=>!vis||vis.has(t.id)).slice().sort(cmpTask);
+  const el=document.getElementById('table-view');
+  if(!rows.length){ el.innerHTML='<div class="empty">표시할 작업이 없습니다.</div>'; return; }
+  let html=`<div class="table-wrap"><table><thead><tr>
+    <th>프로젝트</th><th>진행업무</th><th>구분</th><th>담당자</th><th>우선순위</th><th>시작일</th><th>종료일</th><th>상태</th><th class="hide-sm">문서</th>
+    </tr></thead><tbody>`;
+  rows.forEach(t=>{
+    html+=`<tr>
+      <td class="cat">${esc(t.project)}</td>
+      <td class="task-name"><span class="ttext" onclick="openModal('${t.id}')">${esc(t.task)||'(제목 없음)'}</span></td>
+      <td>${cellSelect(t.id,'category',t.category,['',...distinct('category')])}</td>
+      <td>${assigneeCell(t)}</td>
+      <td>${cellSelect(t.id,'priority',t.priority,['','높음','보통','낮음'])}</td>
+      <td><input type="date" class="cell-date" value="${esc(t.start)}" onchange="updateField('${t.id}','start',this.value)"></td>
+      <td><input type="date" class="cell-date" value="${esc(t.end)}" onchange="updateField('${t.id}','end',this.value)"></td>
+      <td>${cellSelect(t.id,'status',t.status||'대기',STATUSES)}</td>
+      <td class="hide-sm">${docCellEditable(t)}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  el.innerHTML=html;
+}
 
 /* ---------- list (tree) ---------- */
 function renderList(){
@@ -696,7 +781,7 @@ function toggleAssignee(id,person,on){
   if(on){ if(!sel.includes(person)) sel.push(person); } else { sel=sel.filter(p=>p!==person); }
   const order=allPeople(); sel.sort((a,b)=>order.indexOf(a)-order.indexOf(b));
   t.assignee=sel.join(', '); save();
-  renderStatusTabs(); renderView();
+  updateChrome(); renderView();
 }
 async function addPersonTo(id){
   const name=await uiPrompt('새 담당자 이름','');
@@ -746,7 +831,7 @@ async function editProjectLink(proj){
 function updateField(id,field,value){
   const t=byId(id); if(!t) return;
   t[field]=value; save();
-  renderStatusTabs(); renderView();
+  updateChrome(); renderView();
 }
 /* 인라인 하위/작업 추가 */
 function startNewSub(parentId){
@@ -880,7 +965,7 @@ function toggleTodayDone(id,checked){
   const t=byId(id); if(!t) return;
   if(checked){ state.todayDone[id]=t.status||'대기'; t.status='완료'; }
   else { t.status=state.todayDone[id]||'진행중'; delete state.todayDone[id]; }
-  save(); renderStatusTabs(); renderToday();
+  save(); updateChrome(); renderToday();
 }
 function todoItem(t,T,isOver){
   let due='';
@@ -1134,7 +1219,7 @@ function saveTitle(text){
 const SYNC_KEY='schedule-sync-url';
 function getSyncUrl(){ return localStorage.getItem(SYNC_KEY)||''; }
 function setSyncStatus(msg){ const el=document.getElementById('sync-status'); if(el) el.textContent=msg||''; }
-function updateSyncUI(){ const b=document.getElementById('pull-btn'); if(b) b.style.display=getSyncUrl()?'inline-flex':'none'; }
+function updateSyncUI(){ const b=document.getElementById('pm-pull'); if(b) b.style.display=getSyncUrl()?'block':'none'; }
 function nowt(){ return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
 let _pushTimer=null;
 function scheduleSync(){ if(!getSyncUrl()) return; clearTimeout(_pushTimer); setSyncStatus('저장 중…'); _pushTimer=setTimeout(pushToSheet,800); }
@@ -1182,7 +1267,7 @@ async function openSyncSettings(){
 
 /* ---------- init ---------- */
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
-document.addEventListener('click',()=>closeAssigneeMenu());   // 팝오버 바깥 클릭 시 닫기
+document.addEventListener('click',()=>{ closeAssigneeMenu(); hideMenus(); });   // 바깥 클릭 시 팝업 닫기
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape') return;
   if(document.getElementById('dlg-overlay').classList.contains('open')) return; // 다이얼로그는 자체 처리
