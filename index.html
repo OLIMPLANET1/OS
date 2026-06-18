@@ -208,8 +208,7 @@
       onblur="saveTitle(this.innerText)"
       onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">프로젝트 스케줄 보드</h1></div>
     <div class="view-toggle">
-      <button id="tab-today" class="active" onclick="setView('today')">오늘</button>
-      <button id="tab-list" onclick="setView('list')">리스트</button>
+      <button id="tab-list" class="active" onclick="setView('list')">리스트</button>
       <button id="tab-kanban" onclick="setView('kanban')">칸반</button>
     </div>
     <button class="btn" onclick="addProject()">＋ 프로젝트</button>
@@ -311,7 +310,7 @@
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['대기','진행중','완료'];
-let state = { tasks: [], projects: [], people: [], view:'today', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false };
+let state = { tasks: [], projects: [], people: [], view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false };
 
 /* ---------- persistence ---------- */
 function load(){
@@ -389,10 +388,21 @@ function renderStatusTabs(){
   const counts={'':state.tasks.length};
   STATUSES.forEach(s=>counts[s]=state.tasks.filter(t=>(t.status||'대기')===s).length);
   const tabs=[['','전체'],...STATUSES.map(s=>[s,s])];
-  document.getElementById('status-tabs').innerHTML = tabs.map(([v,label])=>
-    `<button class="${state.statusTab===v?'active':''}" onclick="setStatusTab('${v}')">${label}<span class="cnt">${counts[v]}</span></button>`).join('');
+  const statusBtns = tabs.map(([v,label])=>{
+    const active = state.view!=='today' && state.statusTab===v;
+    return `<button class="${active?'active':''}" onclick="selectTopTab('status','${v}')">${label}<span class="cnt">${counts[v]}</span></button>`;
+  }).join('');
+  const td=computeToday();
+  const todayActive = state.view==='today';
+  const todayBtn = `<button class="${todayActive?'active':''}" style="margin-left:auto" onclick="selectTopTab('today')">오늘 할 일<span class="cnt">${td.over.length+td.today.length+td.soon.length}</span></button>`;
+  document.getElementById('status-tabs').innerHTML = statusBtns + todayBtn;
 }
-function setStatusTab(v){ state.statusTab=v; renderStatusTabs(); renderView(); }
+function selectTopTab(kind,val){
+  if(kind==='today'){ setView('today'); return; }
+  state.statusTab=val;
+  if(state.view==='today'){ setView(state.lastBoardView||'list'); }
+  else { render(); }
+}
 function visibleSet(){
   if(!hasFilter()) return null; // null = 전체 표시
   const vis=new Set();
@@ -422,13 +432,13 @@ function fillSelect(id,vals){ const el=document.getElementById(id),cur=el.value;
 /* ---------- view switch ---------- */
 function setView(v){
   state.view=v;
-  document.getElementById('tab-today').classList.toggle('active',v==='today');
+  if(v!=='today') state.lastBoardView=v;
   document.getElementById('tab-list').classList.toggle('active',v==='list');
   document.getElementById('tab-kanban').classList.toggle('active',v==='kanban');
   document.getElementById('today-view').style.display=v==='today'?'block':'none';
   document.getElementById('list-view').style.display=v==='list'?'block':'none';
   document.getElementById('kanban-view').style.display=v==='kanban'?'block':'none';
-  document.getElementById('status-tabs').style.display=v==='today'?'none':'flex';
+  document.getElementById('status-tabs').style.display='flex'; // 항상 표시(오늘 탭 포함)
   render();
 }
 function renderView(){ if(state.view==='today') renderToday(); else if(state.view==='list') renderList(); else renderKanban(); }
@@ -642,12 +652,10 @@ function onDrop(e,status){ e.preventDefault(); e.currentTarget.classList.remove(
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
 function addDaysStr(s,n){ const d=new Date(s); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
 function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
-function renderToday(){
+function computeToday(){
   const T=todayStr(), WEEK=addDaysStr(T,7);
-  const wd=['일','월','화','수','목','금','토'][new Date().getDay()];
-  const pool=state.tasks.filter(t=>matchBasic(t));
   const over=[],today=[],doing=[],soon=[];
-  pool.forEach(t=>{
+  state.tasks.filter(t=>matchBasic(t)).forEach(t=>{
     const st=t.status||'대기';
     if(st==='완료') return;
     const s=t.start||'', e=t.end||'';
@@ -656,6 +664,12 @@ function renderToday(){
     else if(st==='진행중'){ doing.push(t); }
     else if(s && s>T && s<=WEEK){ soon.push(t); }
   });
+  return {over,today,doing,soon};
+}
+function renderToday(){
+  const T=todayStr();
+  const wd=['일','월','화','수','목','금','토'][new Date().getDay()];
+  const {over,today,doing,soon}=computeToday();
   let html=`<div class="today-head">
     <h2>오늘 할 일</h2>
     <span class="sub">${T.replace(/-/g,'. ')} (${wd})</span>
