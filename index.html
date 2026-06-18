@@ -107,6 +107,15 @@
   tbody tr:last-child td{border-bottom:none;}
   tbody tr:hover{background:var(--bg-soft);}
   tbody tr{cursor:pointer;}
+  tr.grp td{background:var(--bg-soft);padding:0;}
+  tr.grp:hover td{background:var(--bg-soft);}
+  .grp-head{display:flex;align-items:center;gap:10px;padding:10px 12px;}
+  .grp-head .chev{cursor:pointer;color:var(--text-muted);font-size:11px;display:inline-block;transition:transform .15s;width:10px;}
+  tr.grp.collapsed .chev{transform:rotate(-90deg);}
+  .grp-head .gname{font-weight:700;font-size:14px;cursor:pointer;}
+  tr.grp .pname-edit{opacity:0;}
+  tr.grp:hover .pname-edit{opacity:1;}
+  tr.empty-row td{padding:11px 12px;color:var(--text-muted);}
   tr.child-row{background:#fcfcfd;}
   tr.child-row td:first-child{color:var(--text-soft);}
   .name-cell{display:flex;align-items:center;gap:6px;min-width:240px;}
@@ -278,9 +287,8 @@
       <button class="vtab" id="tab-today" onclick="setView('today')">오늘</button>
       <button class="vtab" id="tab-report" onclick="setView('report')">성과</button>
       <div class="view-toggle">
+        <button id="tab-list" class="active" onclick="setView('list')">테이블 뷰</button>
         <button id="tab-kanban" onclick="setView('kanban')">칸반 뷰</button>
-        <button id="tab-table" onclick="setView('table')">테이블 뷰</button>
-        <button id="tab-list" class="active" onclick="setView('list')">일반 모드</button>
       </div>
       <div class="pop-wrap">
         <button class="icon-tool" id="filter-btn" title="정렬 및 필터" onclick="toggleFilterMenu(event)">
@@ -321,8 +329,8 @@
 <main>
   <div id="today-view"></div>
   <div id="report-view" style="display:none"></div>
-  <div id="table-view" style="display:none"></div>
   <div id="list-view" style="display:none">
+    <div class="status-tabs" id="list-status-tabs"></div>
     <div class="toolbar">
       <button class="btn btn-ghost btn-sm" onclick="expandAll(true)">모두 펼치기</button>
       <button class="btn btn-ghost btn-sm" onclick="expandAll(false)">모두 접기</button>
@@ -563,10 +571,10 @@ function matchTask(t){
   return true;
 }
 function hasFilter(){ return (state.search||'').trim() || state.filterProject || state.filterAssignee || state.statusTab; }
-function activeFilterCount(){ let n=0; if(state.filterProject)n++; if(state.filterAssignee)n++; if(state.statusTab)n++; if(state.sort!=='priority')n++; return n; }
+function activeFilterCount(){ let n=0; if(state.filterProject)n++; if(state.filterAssignee)n++; if(state.sort!=='priority')n++; return n; }
 /* ---------- 상단 컨트롤(뷰 active / 필터 배지) ---------- */
 function updateChrome(){
-  ['kanban','table','list'].forEach(v=>{ const el=document.getElementById('tab-'+v); if(el) el.classList.toggle('active',state.view===v); });
+  ['kanban','list'].forEach(v=>{ const el=document.getElementById('tab-'+v); if(el) el.classList.toggle('active',state.view===v); });
   document.getElementById('tab-today').classList.toggle('active',state.view==='today');
   document.getElementById('tab-report').classList.toggle('active',state.view==='report');
   const n=activeFilterCount(), b=document.getElementById('filter-badge');
@@ -577,11 +585,9 @@ function renderFilterMenu(){
   const projects=[...new Set(state.tasks.map(t=>t.project).filter(Boolean))].sort();
   const people=allPeople();
   const sorts=[['priority','우선순위순'],['recent','최신순'],['old','오래된순']];
-  const statuses=[['','전체'],['대기','대기'],['진행중','진행중'],['완료','완료']];
   const radio=(name,v,cur,label,fn)=>`<label class="fm-radio"><input type="radio" name="${name}" ${v===cur?'checked':''} onclick="${fn}('${v}')"><span>${label}</span></label>`;
   document.getElementById('filter-menu').innerHTML = `
     <div class="fm-sec"><div class="fm-title">정렬</div>${sorts.map(([v,l])=>radio('fm-sort',v,state.sort,l,'setSort')).join('')}</div>
-    <div class="fm-sec"><div class="fm-title">상태</div>${statuses.map(([v,l])=>radio('fm-status',v,state.statusTab,l,'setStatusFilter')).join('')}</div>
     <div class="fm-sec"><div class="fm-title">프로젝트</div>
       <select class="fm-select" onchange="state.filterProject=this.value;render()"><option value="">전체</option>${projects.map(p=>`<option ${p===state.filterProject?'selected':''}>${esc(p)}</option>`).join('')}</select></div>
     <div class="fm-sec"><div class="fm-title">담당자</div>
@@ -629,83 +635,58 @@ function refreshDatalists(){
 function setView(v){
   state.view=v;
   if(v!=='today'&&v!=='report') state.lastBoardView=v;
-  ['today','report','table','list','kanban'].forEach(x=>{ const el=document.getElementById(x+'-view'); if(el) el.style.display=(v===x)?'block':'none'; });
+  ['today','report','list','kanban'].forEach(x=>{ const el=document.getElementById(x+'-view'); if(el) el.style.display=(v===x)?'block':'none'; });
   hideMenus();
   render();
 }
 function renderView(){
   if(state.view==='today') renderToday();
   else if(state.view==='report') renderReport();
-  else if(state.view==='table') renderTable();
   else if(state.view==='list') renderList();
   else renderKanban();
 }
 function render(){ updateChrome(); refreshDatalists(); renderView(); }
-function renderTable(){
-  const vis=visibleSet();
-  const rows=state.tasks.filter(t=>!vis||vis.has(t.id)).slice().sort(cmpTask);
-  const el=document.getElementById('table-view');
-  if(!rows.length){ el.innerHTML='<div class="empty">표시할 작업이 없습니다.</div>'; return; }
-  let html=`<div class="table-wrap"><table><thead><tr>
-    <th>프로젝트</th><th>진행업무</th><th>구분</th><th>담당자</th><th>우선순위</th><th>시작일</th><th>종료일</th><th>상태</th><th class="hide-sm">문서</th>
-    </tr></thead><tbody>`;
-  rows.forEach(t=>{
-    html+=`<tr>
-      <td class="cat">${esc(t.project)}</td>
-      <td class="task-name"><span class="ttext" onclick="openModal('${t.id}')">${esc(t.task)||'(제목 없음)'}</span></td>
-      <td>${cellSelect(t.id,'category',t.category,['',...distinct('category')])}</td>
-      <td>${assigneeCell(t)}</td>
-      <td>${cellSelect(t.id,'priority',t.priority,['','높음','보통','낮음'])}</td>
-      <td><input type="date" class="cell-date" value="${esc(t.start)}" onchange="updateField('${t.id}','start',this.value)"></td>
-      <td><input type="date" class="cell-date" value="${esc(t.end)}" onchange="updateField('${t.id}','end',this.value)"></td>
-      <td>${cellSelect(t.id,'status',t.status||'대기',STATUSES)}</td>
-      <td class="hide-sm">${docCellEditable(t)}</td>
-    </tr>`;
-  });
-  html+=`</tbody></table></div>`;
-  el.innerHTML=html;
+/* ---------- 테이블 뷰 (그룹 + 펼치기 + 상태 탭, 통합) ---------- */
+function renderListStatusTabs(){
+  const el=document.getElementById('list-status-tabs'); if(!el) return;
+  const counts={'':state.tasks.length};
+  STATUSES.forEach(s=>counts[s]=state.tasks.filter(t=>(t.status||'대기')===s).length);
+  const tabs=[['','전체'],...STATUSES.map(s=>[s,s])];
+  el.innerHTML=tabs.map(([v,l])=>`<button class="${state.statusTab===v?'active':''}" onclick="setStatusFilter('${v}')">${l}<span class="cnt">${counts[v]}</span></button>`).join('');
 }
-
-/* ---------- list (tree) ---------- */
 function renderList(){
+  renderListStatusTabs();
   const vis=visibleSet();
   const tops=topLevel().filter(t=>!vis||vis.has(t.id));
-  const body=document.getElementById('list-body');
-  document.getElementById('count-info').textContent = `프로젝트 ${state.projects.length} · 상위 ${topLevel().length} · 전체 ${state.tasks.length}건`;
+  document.getElementById('count-info').textContent = `프로젝트 ${state.projects.length} · 전체 ${state.tasks.length}건`;
   const groups={};
   tops.forEach(t=>{ (groups[t.project]=groups[t.project]||[]).push(t); });
-  // 표시 순서: 등록된 프로젝트 + 작업에 등장한 프로젝트
   let projOrder=[...state.projects];
   Object.keys(groups).forEach(p=>{ if(!projOrder.includes(p)) projOrder.push(p); });
   if(vis) projOrder=projOrder.filter(p=>groups[p] && groups[p].length); // 필터 시 빈 그룹 숨김
+  const body=document.getElementById('list-body');
   if(!projOrder.length){ body.innerHTML='<div class="empty">표시할 작업이 없습니다.</div>'; return; }
-  let html='';
+  let html=`<div class="table-wrap"><table>
+    <thead><tr><th>진행업무</th><th>구분</th><th>담당자</th><th>우선순위</th><th>시작일</th><th>종료일</th><th>상태</th><th class="hide-sm">문서</th></tr></thead><tbody>`;
   projOrder.forEach(proj=>{
-    const list=groups[proj]||[];
-    const collapsed=state.collapsed[proj]?'collapsed':'';
+    const list=(groups[proj]||[]).slice().sort(cmpTask);
+    const collapsed=state.collapsed[proj];
     const total=list.reduce((n,t)=>n+1+descendants(t.id).length,0);
     const sum=projSummary(proj);
-    html+=`<div class="project-group ${collapsed}">
-      <div class="project-head" onclick="toggleGroup('${esc(proj)}')">
-        <span class="chev">▼</span>
-        <span class="pname">${esc(proj)}</span>
-        <button class="pname-edit" title="프로젝트 이름 수정" onclick="event.stopPropagation();renameProject('${esc(proj)}')">✎</button>
+    html+=`<tr class="grp${collapsed?' collapsed':''}"><td colspan="8"><div class="grp-head">
+        <span class="chev" onclick="toggleGroup('${esc(proj)}')">▼</span>
+        <span class="gname" onclick="toggleGroup('${esc(proj)}')">${esc(proj)}</span>
         <span class="pcount">${total}</span>
         <span class="pmeta">${sum.dateStr?`일정 ${sum.dateStr}`:''}${sum.who.length?`${sum.dateStr?'  ·  ':''}${esc(sum.who.join(', '))}`:''}</span>
-      </div>
-      <div class="table-wrap">`;
-    if(list.length){
-      html+=`<table>
-        <thead><tr><th>진행업무</th><th>구분</th><th>담당자</th><th>우선순위</th><th>시작일</th><th>종료일</th><th>상태</th><th class="hide-sm">문서</th></tr></thead>
-        <tbody>`;
-      list.forEach(t=>{ html+=renderRow(t,0,vis); });
-      html+=`</tbody></table>`;
-    } else {
-      html+=`<div class="empty-proj">아직 작업이 없습니다.
-        <button class="btn btn-ghost btn-sm" onclick="startNewTop('${esc(proj)}')">＋ 작업 추가</button></div>`;
+        <button class="pname-edit" title="이름 수정" onclick="event.stopPropagation();renameProject('${esc(proj)}')">✎</button>
+        <button class="pname-edit" title="작업 추가" onclick="event.stopPropagation();startNewTop('${esc(proj)}')">＋</button>
+      </div></td></tr>`;
+    if(!collapsed){
+      if(list.length) list.forEach(t=>{ html+=renderRow(t,0,vis); });
+      else html+=`<tr class="empty-row"><td colspan="8"><span class="muted">아직 작업이 없습니다.</span> <button class="btn btn-ghost btn-sm" onclick="startNewTop('${esc(proj)}')">＋ 작업 추가</button></td></tr>`;
     }
-    html+=`</div></div>`;
   });
+  html+=`</tbody></table></div>`;
   body.innerHTML=html;
 }
 function selOptions(values, current){
