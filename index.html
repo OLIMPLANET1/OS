@@ -324,6 +324,8 @@
     <button class="nav-item" id="nav-report" onclick="setView('report')"><span class="ni">▤</span><span>성과</span></button>
     <div class="nav-group">고객 관리</div>
     <button class="nav-item" id="nav-db" onclick="setView('db')"><span class="ni">◍</span><span>고객 DB</span></button>
+    <div class="nav-group">계약 관리</div>
+    <button class="nav-item" id="nav-contract" onclick="setView('contract')"><span class="ni">▤</span><span>계약단계 체크</span></button>
   </nav>
 </aside>
 <div class="app-main">
@@ -379,6 +381,7 @@
   <div id="today-view"></div>
   <div id="report-view" style="display:none"></div>
   <div id="db-view" style="display:none"></div>
+  <div id="contract-view" style="display:none"></div>
   <div id="list-view" style="display:none">
     <div class="status-tabs" id="list-status-tabs"></div>
     <div class="toolbar">
@@ -633,14 +636,16 @@ function updateChrome(){
   document.getElementById('nav-today').classList.toggle('active', v==='today');
   document.getElementById('nav-report').classList.toggle('active', v==='report');
   const navDb=document.getElementById('nav-db'); if(navDb) navDb.classList.toggle('active', v==='db');
+  const navCt=document.getElementById('nav-contract'); if(navCt) navCt.classList.toggle('active', v==='contract');
   const bt=document.querySelector('.board-tools'); if(bt) bt.style.display=board?'inline-flex':'none';
-  document.body.classList.toggle('db-full', v==='db');   // 고객 DB는 전체 영역 채우기
+  document.body.classList.toggle('db-full', v==='db'||v==='contract');   // 임베드(고객DB/계약)는 전체 영역 채우기
   // 상단 제목: 탭별
   const titleEl=document.getElementById('board-title');
   if(titleEl){
     if(v==='today'){ titleEl.textContent='오늘 할 일'; titleEl.contentEditable='false'; titleEl.classList.add('static'); }
     else if(v==='report'){ titleEl.textContent='성과 리포트'; titleEl.contentEditable='false'; titleEl.classList.add('static'); }
     else if(v==='db'){ titleEl.textContent='고객 DB'; titleEl.contentEditable='false'; titleEl.classList.add('static'); }
+    else if(v==='contract'){ titleEl.textContent='계약단계 체크'; titleEl.contentEditable='false'; titleEl.classList.add('static'); }
     else { titleEl.textContent=localStorage.getItem(TITLE_KEY)||'프로젝트 스케줄 보드'; titleEl.contentEditable='true'; titleEl.classList.remove('static'); }
   }
   const n=activeFilterCount(), b=document.getElementById('filter-badge');
@@ -701,7 +706,7 @@ function refreshDatalists(){
 function setView(v){
   state.view=v;
   if(v==='list'||v==='kanban') state.lastBoardView=v;   // 보드 뷰만 기억(db/today/report 제외)
-  ['today','report','db','list','kanban'].forEach(x=>{ const el=document.getElementById(x+'-view'); if(el) el.style.display=(v===x)?'block':'none'; });
+  ['today','report','db','contract','list','kanban'].forEach(x=>{ const el=document.getElementById(x+'-view'); if(el) el.style.display=(v===x)?'block':'none'; });
   hideMenus();
   render();
 }
@@ -709,6 +714,7 @@ function renderView(){
   if(state.view==='today') renderToday();
   else if(state.view==='report') renderReport();
   else if(state.view==='db') renderDb();
+  else if(state.view==='contract') renderContract();
   else if(state.view==='list') renderList();
   else renderKanban();
 }
@@ -716,6 +722,12 @@ function renderDb(){
   const el=document.getElementById('db-view');
   if(!el.querySelector('iframe')){   // 한 번만 로드(재렌더 시 새로고침 방지)
     el.innerHTML='<iframe class="db-frame" src="https://jungle0529.github.io/DB/" title="고객 DB" loading="lazy"></iframe>';
+  }
+}
+function renderContract(){
+  const el=document.getElementById('contract-view');
+  if(!el.querySelector('iframe')){
+    el.innerHTML='<iframe class="db-frame" src="https://jungle0529.github.io/contract/" title="계약단계 체크" loading="lazy"></iframe>';
   }
 }
 function render(){ updateChrome(); refreshDatalists(); renderView(); }
