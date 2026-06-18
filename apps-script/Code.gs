@@ -39,6 +39,7 @@ function doGet() {
         if (key === 'order') val = Number(val) || 0;
         else if (key === 'parentId') val = val === '' ? null : String(val);
         else if (key === 'start' || key === 'end') val = formatDate_(val);
+        else if (val instanceof Date) val = formatDate_(val);   // 어떤 날짜 셀도 YYYY-MM-DD로
         else val = val === '' ? '' : String(val);
         o[key] = val;
       }

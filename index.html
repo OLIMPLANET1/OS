@@ -28,6 +28,12 @@
   .brand h1:focus{background:var(--bg);box-shadow:0 0 0 3px var(--accent-soft);}
   .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);}
   .pmeta{font-size:12px;color:var(--text-muted);font-weight:400;margin-left:6px;}
+  .plink{font-size:12px;margin-left:8px;color:var(--accent);text-decoration:none;}
+  .plink:hover{text-decoration:underline;}
+  .plink-edit{font-size:12px;margin-left:6px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-radius:5px;padding:2px 6px;}
+  .plink-edit:hover{background:var(--bg-muted);color:var(--text);}
+  .rp-doc{font-size:12px;color:var(--accent);text-decoration:none;white-space:nowrap;}
+  .rp-doc:hover{text-decoration:underline;}
 
   .view-toggle{display:inline-flex;background:var(--bg-muted);border-radius:var(--radius);padding:3px;}
   .view-toggle button{border:none;background:transparent;color:var(--text-soft);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:500;}
@@ -325,13 +331,13 @@
 <script>
 const STORAGE_KEY = 'schedule-board-v2';
 const STATUSES = ['대기','진행중','완료'];
-let state = { tasks: [], projects: [], people: [], view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'' };
+let state = { tasks: [], projects: [], people: [], projectLinks:{}, view:'list', lastBoardView:'list', collapsed:{}, expanded:{}, statusTab:'', editingId:null, pendingParent:null, newRowId:null, showOngoing:false, reportFrom:'', reportTo:'' };
 
 /* ---------- persistence ---------- */
 function load(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){ const d=JSON.parse(raw); state.tasks=d.tasks||[]; state.collapsed=d.collapsed||{}; state.expanded=d.expanded||{}; state.projects=d.projects||[]; state.people=d.people||[]; }
+    if(raw){ const d=JSON.parse(raw); state.tasks=d.tasks||[]; state.collapsed=d.collapsed||{}; state.expanded=d.expanded||{}; state.projects=d.projects||[]; state.people=d.people||[]; state.projectLinks=d.projectLinks||{}; }
     else { seedFromSheet(); }
   }catch(e){ state.tasks=[]; }
   migrate();
@@ -345,8 +351,11 @@ function peopleFromTasks(){
 }
 function allPeople(){ const out=[...state.people]; peopleFromTasks().forEach(p=>{ if(!out.includes(p)) out.push(p); }); return out; }
 function migrate(){
-  // 구버전 상태값 '대기중'/'진행예정' → '대기'
-  state.tasks.forEach(t=>{ if(t.status==='대기중'||t.status==='진행예정') t.status='대기'; });
+  // 구버전 상태값 '대기중'/'진행예정' → '대기', 날짜 표기 정규화
+  state.tasks.forEach(t=>{
+    if(t.status==='대기중'||t.status==='진행예정') t.status='대기';
+    t.start=toISODate(t.start); t.end=toISODate(t.end);
+  });
 }
 function projectsFromTasks(){
   const seen=[]; state.tasks.slice().sort((a,b)=>(a.order||0)-(b.order||0))
@@ -362,7 +371,7 @@ function seedFromSheet(){
   save();
 }
 function save(opts){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,projects:state.projects,people:state.people,collapsed:state.collapsed,expanded:state.expanded}));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,projects:state.projects,people:state.people,projectLinks:state.projectLinks,collapsed:state.collapsed,expanded:state.expanded}));
   if(!(opts&&opts.noSync)) scheduleSync();
 }
 function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
@@ -379,6 +388,17 @@ function projColor(name){ let h=0; name=name||''; for(let i=0;i<name.length;i++)
 function initials(name){ return (name||'').trim().slice(0,2)||'–'; }
 function progressOf(id){ const d=descendants(id); if(!d.length) return null; const done=d.filter(x=>x.status==='완료').length; return {done,total:d.length,pct:Math.round(done/d.length*100)}; }
 function docCell(doc){ if(!doc) return '–'; if(/^https?:\/\//i.test(doc)) return `<a class="doc-link" href="${esc(doc)}" target="_blank" onclick="event.stopPropagation()">열기 ↗</a>`; return `<span class="muted">${esc(doc)}</span>`; }
+/* 날짜 정규화/표기 */
+function toISODate(v){
+  if(v==null||v==='') return '';
+  if(v instanceof Date) return fmtDate(v);
+  const s=String(v).trim();
+  const m=s.match(/^(\d{4})[-./]\s*(\d{1,2})[-./]\s*(\d{1,2})/);
+  if(m) return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+  const d=new Date(s);
+  return isNaN(d)?'':fmtDate(d);
+}
+function fmtK(v){ const s=toISODate(v); return s? s.replace(/-/g,'.') : ''; }
 
 /* ---------- filtering (tree-aware) ---------- */
 function matchBasic(t){
@@ -491,6 +511,7 @@ function renderList(){
         <span class="pname">${esc(proj)}</span>
         <span class="pcount">${total}</span>
         <span class="pmeta">${sum.dateStr?`일정 ${sum.dateStr}`:''}${sum.who.length?`${sum.dateStr?'  ·  ':''}담당 ${esc(sum.who.join(', '))}`:''}</span>
+        ${plinkHtml(proj)}
       </div>
       <div class="table-wrap">`;
     if(list.length){
@@ -593,9 +614,23 @@ function projSummary(proj){
   const starts=ts.map(t=>t.start).filter(Boolean).sort();
   const ends=ts.map(t=>t.end).filter(Boolean).sort();
   const s=starts[0]||'', e=ends[ends.length-1]||'';
-  const dateStr=(s||e)?`${s||'…'} ~ ${e||'…'}`:'';
+  const dateStr=(s||e)?`${s?fmtK(s):'…'} ~ ${e?fmtK(e):'…'}`:'';
   const who=[...new Set(ts.flatMap(t=>(t.assignee||'').split(',').map(x=>x.trim())).filter(Boolean))];
   return {dateStr, who};
+}
+function plinkHtml(proj){
+  const url=state.projectLinks[proj]||'';
+  const link = url?`<a class="plink" href="${esc(url)}" target="_blank" onclick="event.stopPropagation()">🔗 자료 ↗</a>`:'';
+  const edit = `<button class="plink-edit" title="프로젝트 링크" onclick="event.stopPropagation();editProjectLink('${esc(proj)}')">${url?'✎':'🔗 링크'}</button>`;
+  return link+edit;
+}
+function editProjectLink(proj){
+  const cur=state.projectLinks[proj]||'';
+  const u=prompt('프로젝트 링크(URL)를 입력하세요. (비우면 삭제)', cur);
+  if(u===null) return;
+  const url=u.trim();
+  if(url) state.projectLinks[proj]=url; else delete state.projectLinks[proj];
+  save({noSync:true}); renderList();
 }
 function updateField(id,field,value){
   const t=byId(id); if(!t) return;
@@ -653,7 +688,7 @@ function renderKanban(){
         <div class="kc-name">${esc(t.task)}</div>
         <div class="kc-meta">
           ${t.assignee?`<span class="who"><span class="avatar">${esc(initials(t.assignee))}</span>${esc(t.assignee)}</span>`:''}
-          ${t.end?`<span>~ ${esc(t.end)}</span>`:''}
+          ${t.end?`<span>~ ${esc(fmtK(t.end))}</span>`:''}
           ${prog?`<span class="miniprog">하위 ${prog.done}/${prog.total}<span class="bar"><i style="width:${prog.pct}%"></i></span></span>`:''}
         </div>
       </div>`;
@@ -732,9 +767,9 @@ function renderToday(){
 function todoItem(t,T,isOver){
   let due='';
   if(t.end){
-    if(isOver){ const n=daysBetween(t.end,T); due=`<span class="todo-due">마감 ${esc(t.end)} <strong>(${n}일 지남)</strong></span>`; }
+    if(isOver){ const n=daysBetween(t.end,T); due=`<span class="todo-due">마감 ${esc(fmtK(t.end))} <strong>(${n}일 지남)</strong></span>`; }
     else if(t.end===T){ due=`<span class="todo-due"><strong>오늘 마감</strong></span>`; }
-    else { due=`<span class="todo-due">~ ${esc(t.end)}</span>`; }
+    else { due=`<span class="todo-due">~ ${esc(fmtK(t.end))}</span>`; }
   } else if(t.start===T){ due=`<span class="todo-due"><strong>오늘 시작</strong></span>`; }
   return `<div class="todo-item">
     <input type="checkbox" title="완료 처리" onchange="updateField('${t.id}','status', this.checked?'완료':'진행중')">
@@ -787,7 +822,7 @@ function renderReport(){
 
   let html=`<div class="today-head">
     <h2>성과 리포트</h2>
-    <span class="sub">${from.replace(/-/g,'. ')} ~ ${to.replace(/-/g,'. ')}</span>
+    <span class="sub">${fmtK(from)} ~ ${fmtK(to)}</span>
   </div>
   <div class="report-controls">
     <input type="date" value="${esc(from)}" onchange="setReportFrom(this.value)"> ~
@@ -812,21 +847,26 @@ function renderReport(){
         <span class="cnt">완료 ${r.completed.length} · 진행 ${r.active.length}</span></div>`;
     if(r.completed.length){
       html+=`<div class="rp-sub">완료</div>`;
-      r.completed.forEach(t=>{ html+=rpItem(t,'✓',t.end); });
+      r.completed.forEach(t=>{ html+=rpItem(t,'✓',fmtK(t.end)); });
     }
     if(r.active.length){
       html+=`<div class="rp-sub">진행 중</div>`;
-      r.active.forEach(t=>{ html+=rpItem(t,'·',t.end?('~ '+t.end):''); });
+      r.active.forEach(t=>{ html+=rpItem(t,'·',t.end?('~ '+fmtK(t.end)):''); });
     }
     html+=`</div>`;
   });
   document.getElementById('report-view').innerHTML=html;
 }
 function rpItem(t,mark,dateLabel){
+  const plink=state.projectLinks[t.project]||'';
+  const docLink = (t.doc && /^https?:\/\//i.test(t.doc))
+    ? `<a class="rp-doc" href="${esc(t.doc)}" target="_blank" onclick="event.stopPropagation()">결과물 ↗</a>`
+    : (plink?`<a class="rp-doc" href="${esc(plink)}" target="_blank" onclick="event.stopPropagation()">자료 ↗</a>`:'');
   return `<div class="rp-item">
     <span class="mark">${mark}</span>
     <span class="rp-name" onclick="openModal('${t.id}')">${esc(t.task)||'(제목 없음)'}</span>
     <span class="rp-proj">${esc(t.project)}</span>
+    ${docLink}
     ${dateLabel?`<span class="rp-date">${esc(dateLabel)}</span>`:''}
   </div>`;
 }
