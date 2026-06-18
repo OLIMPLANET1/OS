@@ -553,7 +553,7 @@ function renderList(){
         <span class="chev">▼</span>
         <span class="pname">${esc(proj)}</span>
         <span class="pcount">${total}</span>
-        <span class="pmeta">${sum.dateStr?`일정 ${sum.dateStr}`:''}${sum.who.length?`${sum.dateStr?'  ·  ':''}담당 ${esc(sum.who.join(', '))}`:''}</span>
+        <span class="pmeta">${sum.dateStr?`일정 ${sum.dateStr}`:''}${sum.who.length?`${sum.dateStr?'  ·  ':''}${esc(sum.who.join(', '))}`:''}</span>
       </div>
       <div class="table-wrap">`;
     if(list.length){
