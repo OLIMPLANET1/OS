@@ -167,7 +167,10 @@
     <select id="f-project" onchange="render()"><option value="">전체</option></select>
     <span class="filter-label">담당자</span>
     <select id="f-assignee" onchange="render()"><option value="">전체</option></select>
-    <button class="btn btn-ghost" style="margin-left:auto" onclick="exportData()">내보내기</button>
+    <span id="sync-status" class="filter-label" style="margin-left:auto"></span>
+    <button class="btn btn-ghost" id="pull-btn" onclick="pullFromSheet()" style="display:none">↻ 불러오기</button>
+    <button class="btn btn-ghost" onclick="openSyncSettings()">🔗 공유</button>
+    <button class="btn btn-ghost" onclick="exportData()">내보내기</button>
     <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">가져오기</button>
     <button class="btn btn-ghost" onclick="resetToSheet()">시트 원본으로</button>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
@@ -279,7 +282,10 @@ function seedFromSheet(){
   state.projects = projectsFromTasks();
   save();
 }
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,projects:state.projects,collapsed:state.collapsed,expanded:state.expanded})); }
+function save(opts){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({tasks:state.tasks,projects:state.projects,collapsed:state.collapsed,expanded:state.expanded}));
+  if(!(opts&&opts.noSync)) scheduleSync();
+}
 function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 /* ---------- helpers ---------- */
@@ -416,14 +422,14 @@ function renderRow(t,depth,vis){
   if(kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
   return html;
 }
-function toggleGroup(p){ state.collapsed[p]=!state.collapsed[p]; save(); renderList(); }
-function toggleExpand(id){ state.expanded[id]=!state.expanded[id]; save(); renderList(); }
+function toggleGroup(p){ state.collapsed[p]=!state.collapsed[p]; save({noSync:true}); renderList(); }
+function toggleExpand(id){ state.expanded[id]=!state.expanded[id]; save({noSync:true}); renderList(); }
 function expandAll(v){
   // 프로젝트 그룹 + 모든 하위 트리를 함께 펼치기/접기
   const projs=new Set([...state.projects, ...topLevel().map(t=>t.project)]);
   projs.forEach(p=>{ state.collapsed[p]=!v; });
   state.tasks.forEach(t=>{ if(descendants(t.id).length) state.expanded[t.id]=v; });
-  save(); renderList();
+  save({noSync:true}); renderList();
 }
 
 /* ---------- kanban (top-level cards) ---------- */
@@ -568,10 +574,52 @@ function openNewInProject(proj){
   document.getElementById('m-task').focus();
 }
 
+/* ---------- 구글 시트 동기화 ---------- */
+const SYNC_KEY='schedule-sync-url';
+function getSyncUrl(){ return localStorage.getItem(SYNC_KEY)||''; }
+function setSyncStatus(msg){ const el=document.getElementById('sync-status'); if(el) el.textContent=msg||''; }
+function updateSyncUI(){ const b=document.getElementById('pull-btn'); if(b) b.style.display=getSyncUrl()?'inline-flex':'none'; }
+function nowt(){ return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
+let _pushTimer=null;
+function scheduleSync(){ if(!getSyncUrl()) return; clearTimeout(_pushTimer); setSyncStatus('저장 중…'); _pushTimer=setTimeout(pushToSheet,800); }
+function pushToSheet(){
+  const url=getSyncUrl(); if(!url) return;
+  // text/plain 본문 → 프리플라이트(OPTIONS) 없이 전송 (Apps Script CORS 회피)
+  return fetch(url,{method:'POST',body:JSON.stringify({tasks:state.tasks})})
+    .then(r=>r.json())
+    .then(d=>setSyncStatus(d&&d.ok?('시트 동기화됨 · '+nowt()):'동기화 응답 오류'))
+    .catch(()=>setSyncStatus('동기화 실패(네트워크)'));
+}
+function pullFromSheet(opts){
+  const url=getSyncUrl(); if(!url){ openSyncSettings(); return; }
+  setSyncStatus('불러오는 중…');
+  return fetch(url).then(r=>r.json()).then(d=>{
+    if(!d||!Array.isArray(d.tasks)) throw 0;
+    if(d.tasks.length===0 && opts && opts.seedIfEmpty){ setSyncStatus('시트가 비어 현재 데이터를 업로드…'); return pushToSheet(); }
+    state.tasks=d.tasks.map(t=>({parentId:t.parentId||null, order:Number(t.order)||0, ...t}));
+    migrate(); state.projects=projectsFromTasks();
+    state.expanded={}; state.tasks.forEach(t=>{ if(!t.parentId) state.expanded[t.id]=true; });
+    save({noSync:true}); render(); setSyncStatus('시트에서 불러옴 · '+nowt());
+  }).catch(()=>setSyncStatus('불러오기 실패 (URL/배포 확인)'));
+}
+function openSyncSettings(){
+  const cur=getSyncUrl();
+  const u=prompt('Google Apps Script 웹앱 URL( .../exec )을 붙여넣으세요.\n(비우고 확인하면 공유 해제)', cur);
+  if(u===null) return;
+  const url=u.trim();
+  if(!url){ localStorage.removeItem(SYNC_KEY); updateSyncUI(); setSyncStatus('공유 해제됨'); return; }
+  if(!/^https:\/\/script\.google\.com\/macros\/.+\/exec\b/.test(url)){
+    if(!confirm('일반적인 Apps Script 웹앱 주소(.../exec) 형식이 아닙니다. 그래도 연결할까요?')) return;
+  }
+  localStorage.setItem(SYNC_KEY,url); updateSyncUI(); setSyncStatus('연결 확인 중…');
+  pullFromSheet({seedIfEmpty:true});
+}
+
 /* ---------- init ---------- */
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
-load(); render();
+load(); render(); updateSyncUI();
+if(getSyncUrl()) pullFromSheet();   // 공유 연결돼 있으면 시트 데이터로 갱신
 </script>
 </body>
 </html>
