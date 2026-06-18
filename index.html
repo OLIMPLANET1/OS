@@ -171,8 +171,9 @@
   .ap-add{padding:7px 8px;margin-top:4px;border-top:1px solid var(--border);color:var(--accent);font-size:12px;cursor:pointer;border-radius:6px;}
   .ap-add:hover{background:var(--accent-soft);}
   .assignee-box{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
-  .assignee-box label{display:inline-flex;align-items:center;gap:5px;font-size:13px;border:1px solid var(--border-strong);border-radius:20px;padding:4px 11px;cursor:pointer;user-select:none;white-space:nowrap;}
-  .assignee-box label input{flex:none;}
+  .assignee-box label{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;width:auto;font-size:13px;border:1px solid var(--border-strong);border-radius:20px;padding:4px 12px;cursor:pointer;user-select:none;white-space:nowrap;overflow:visible;}
+  .assignee-box label input{flex:none;margin:0;width:14px;height:14px;}
+  .assignee-box label span{flex:none;}
   .assignee-box label.on{background:var(--accent-soft);border-color:var(--accent);color:#1d4ed8;}
   .assignee-box label input{margin:0;}
   .assignee-box .addp{font-size:12px;color:var(--accent);cursor:pointer;padding:4px 8px;}
