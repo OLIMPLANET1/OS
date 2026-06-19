@@ -687,10 +687,8 @@ function visibleSet(){
   state.tasks.forEach(t=>{
     if(matchTask(t)){
       vis.add(t.id);
-      // 조상 추가
+      // 맥락 유지를 위해 조상만 추가(하위는 자동 포함하지 않음 → 상태 필터 시 비매칭 하위 숨김)
       let p=t.parentId; while(p && byId(p)){ vis.add(p); p=byId(p).parentId; }
-      // 자손 추가
-      descendants(t.id).forEach(d=>vis.add(d.id));
     }
   });
   return vis;
