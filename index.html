@@ -1068,8 +1068,8 @@ function computeToday(){
     const s=t.start||'', e=t.end||'';
     if(e && e<T){ over.push(t); }
     else if(e===T || s===T || (s && e && s<=T && e>=T)){ today.push(t); }
-    else if(st==='진행중' || done){ doing.push(t); }
-    else if(s && s>T && s<=WEEK){ soon.push(t); }
+    else if(s && s>T && s<=WEEK){ soon.push(t); }      // 날짜 기반 예정 우선(체크해도 이 섹션 유지)
+    else if(st==='진행중' || done){ doing.push(t); }    // 기한 미정(진행중/체크된 완료)
   });
   return {over,today,doing,soon};
 }
