@@ -933,12 +933,12 @@ function updateField(id,field,value){
 function startNewSub(parentId){
   const p=byId(parentId); if(!p) return;
   const id=uid();
-  state.tasks.push({id,parentId,project:p.project,category:p.category,assignee:p.assignee,priority:'',start:'',end:'',status:'진행대기',doc:'',progress:'',issue:'',order:Date.now()});
+  state.tasks.push({id,parentId,project:p.project,category:p.category,assignee:p.assignee,priority:'',start:'',end:'',status:state.statusTab||'진행대기',doc:'',progress:'',issue:'',order:Date.now()});
   state.expanded[parentId]=true; state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
 }
 function startNewTop(project){
   const id=uid();
-  state.tasks.push({id,parentId:null,project,category:'',assignee:'',priority:'',start:'',end:'',status:'진행대기',doc:'',progress:'',issue:'',order:Date.now()});
+  state.tasks.push({id,parentId:null,project,category:'',assignee:'',priority:'',start:'',end:'',status:state.statusTab||'진행대기',doc:'',progress:'',issue:'',order:Date.now()});
   if(project && !state.projects.includes(project)) state.projects.unshift(project);
   state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
 }
