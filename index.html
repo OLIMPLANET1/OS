@@ -773,6 +773,7 @@ function renderList(){
         <span class="pmeta">${sum.dateStr?`일정 ${sum.dateStr}`:''}${sum.who.length?`${sum.dateStr?'  ·  ':''}${esc(sum.who.join(', '))}`:''}</span>
         <button class="pname-edit" title="이름 수정" onclick="event.stopPropagation();renameProject('${esc(proj)}')">✎</button>
         <button class="pname-edit" title="작업 추가" onclick="event.stopPropagation();startNewTop('${esc(proj)}')">＋</button>
+        <button class="pname-edit" title="프로젝트 삭제" onclick="event.stopPropagation();deleteProject('${esc(proj)}')">🗑</button>
       </div></td></tr>`;
     if(!collapsed){
       if(list.length) list.forEach(t=>{ html+=renderRow(t,0,vis,flat); });
@@ -901,6 +902,16 @@ function plinkHtml(proj){
   const link = url?`<a class="plink" href="${esc(url)}" target="_blank" onclick="event.stopPropagation()">🔗 자료 ↗</a>`:'';
   const edit = `<button class="plink-edit" title="프로젝트 링크" onclick="event.stopPropagation();editProjectLink('${esc(proj)}')">${url?'✎':'🔗 링크'}</button>`;
   return link+edit;
+}
+async function deleteProject(proj){
+  const ids=new Set();
+  state.tasks.filter(t=>t.project===proj).forEach(t=>{ ids.add(t.id); descendants(t.id).forEach(d=>ids.add(d.id)); });
+  const msg = ids.size ? `'${proj}' 프로젝트와 작업 ${ids.size}건을 모두 삭제할까요?` : `'${proj}' 프로젝트를 삭제할까요?`;
+  if(!(await uiConfirm(msg))) return;
+  state.tasks=state.tasks.filter(t=>!ids.has(t.id));
+  state.projects=state.projects.filter(p=>p!==proj);
+  delete state.projectLinks[proj]; delete state.collapsed[proj];
+  save(); renderList();
 }
 async function renameProject(old){
   const name=await uiPrompt('프로젝트 이름을 수정하세요.', old);
