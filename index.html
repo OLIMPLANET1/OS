@@ -539,6 +539,14 @@ function migrate(){
     if(t.status==='대기중'||t.status==='진행예정'||t.status==='대기') t.status='진행대기';
     t.start=toISODate(t.start); t.end=toISODate(t.end);
   });
+  // 자식 프로젝트를 최상위 조상(그룹)의 프로젝트와 일치(오늘/보드/성과 불일치 방지)
+  const idx={}; state.tasks.forEach(t=>idx[t.id]=t);
+  state.tasks.forEach(t=>{
+    if(!t.parentId) return;
+    let c=t, seen={};
+    while(c.parentId && idx[c.parentId] && !seen[c.id]){ seen[c.id]=1; c=idx[c.parentId]; }
+    if(c.project && t.project!==c.project) t.project=c.project;
+  });
 }
 function projectsFromTasks(){
   const seen=[]; state.tasks.slice().sort((a,b)=>(a.order||0)-(b.order||0))
