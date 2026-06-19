@@ -146,6 +146,9 @@
   tr.grp.drop-target>td{box-shadow:inset 0 0 0 2px var(--accent);}
   body.row-dragging .cell-select,body.row-dragging .cell-date,body.row-dragging .assignee-cell,body.row-dragging .doc-cell,body.row-dragging .subadd,body.row-dragging .ttext{pointer-events:none;}
   tr.child-row{background:#fcfcfd;}
+  tr.done-row{opacity:.5;}
+  tr.done-row:hover{opacity:.85;}
+  tr.done-row .ttext{text-decoration:line-through;color:var(--text-muted);}
   tr.child-row td:first-child{color:var(--text-soft);}
   .name-cell{display:flex;align-items:center;gap:6px;min-width:240px;}
   .twisty{width:16px;height:16px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:10px;border-radius:4px;}
@@ -553,7 +556,9 @@ function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).sl
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function byId(id){ return state.tasks.find(t=>t.id===id); }
 function prRank(p){ return p==='높음'?0:p==='보통'?1:p==='낮음'?3:2; } // 높음>보통>미지정>낮음
+function statusRank(s){ s=s||'진행대기'; return s==='진행중'?0:s==='제안중'?1:s==='완료'?3:2; } // 진행중>제안중>진행대기>완료
 function cmpTask(a,b){
+  const sr=statusRank(a.status)-statusRank(b.status); if(sr) return sr; // 완료는 항상 아래로
   if(state.sort==='recent') return (b.order||0)-(a.order||0);
   if(state.sort==='old') return (a.order||0)-(b.order||0);
   return prRank(a.priority)-prRank(b.priority) || (a.order||0)-(b.order||0); // 우선순위순(기본)
@@ -814,7 +819,7 @@ function renderRow(t,depth,vis,flat){
   const twisty = (!flat && kids.length)
     ? `<span class="twisty has" onclick="event.stopPropagation();toggleExpand('${t.id}')">${open?'▼':'▶'}</span>`
     : `<span class="twisty empty">•</span>`;
-  let html=`<tr class="${depth?'child-row':''}" ondragover="onRowDragOver(event)" ondragleave="onRowDragLeave(event)" ondrop="dropAsChild(event,'${t.id}')">
+  let html=`<tr class="${depth?'child-row':''}${(t.status==='완료')?' done-row':''}" ondragover="onRowDragOver(event)" ondragleave="onRowDragLeave(event)" ondrop="dropAsChild(event,'${t.id}')">
     <td><div class="name-cell" style="padding-left:${depth*18}px">
       <span class="drag-handle" draggable="true" ondragstart="onRowDragStart(event,'${t.id}')" ondragend="onRowDragEnd(event)" title="드래그하여 이동">⠿</span>
       ${twisty}<span class="ttext" onclick="event.stopPropagation();openModal('${t.id}')" title="자세히 보기">${esc(t.task)||'<span class=muted>(제목 없음)</span>'}</span>
