@@ -740,14 +740,21 @@ function renderListStatusTabs(){
 }
 function renderList(){
   renderListStatusTabs();
-  const vis=visibleSet();
-  const tops=topLevel().filter(t=>!vis||vis.has(t.id));
-  document.getElementById('count-info').textContent = `프로젝트 ${state.projects.length} · 전체 ${state.tasks.length}건`;
-  const groups={};
-  tops.forEach(t=>{ (groups[t.project]=groups[t.project]||[]).push(t); });
-  let projOrder=[...state.projects];
-  Object.keys(groups).forEach(p=>{ if(!projOrder.includes(p)) projOrder.push(p); });
-  if(vis) projOrder=projOrder.filter(p=>groups[p] && groups[p].length); // 필터 시 빈 그룹 숨김
+  const flat = !!state.statusTab;              // 상태 탭 선택 시 매칭 항목만 평면 표시
+  const vis = visibleSet();
+  const groups={}; let projOrder=[];
+  if(flat){
+    state.tasks.filter(matchTask).sort(cmpTask).forEach(t=>{ (groups[t.project]=groups[t.project]||[]).push(t); });
+    projOrder=[...state.projects]; Object.keys(groups).forEach(p=>{ if(!projOrder.includes(p)) projOrder.push(p); });
+    projOrder=projOrder.filter(p=>groups[p] && groups[p].length);
+  } else {
+    topLevel().filter(t=>!vis||vis.has(t.id)).forEach(t=>{ (groups[t.project]=groups[t.project]||[]).push(t); });
+    projOrder=[...state.projects]; Object.keys(groups).forEach(p=>{ if(!projOrder.includes(p)) projOrder.push(p); });
+    if(vis) projOrder=projOrder.filter(p=>groups[p] && groups[p].length);
+  }
+  document.getElementById('count-info').textContent = flat
+    ? `${state.statusTab} ${Object.values(groups).reduce((n,a)=>n+a.length,0)}건`
+    : `프로젝트 ${state.projects.length} · 전체 ${state.tasks.length}건`;
   const body=document.getElementById('list-body');
   if(!projOrder.length){ body.innerHTML='<div class="empty">표시할 작업이 없습니다.</div>'; return; }
   let html=`<div class="table-wrap"><table>
@@ -755,7 +762,7 @@ function renderList(){
   projOrder.forEach(proj=>{
     const list=(groups[proj]||[]).slice().sort(cmpTask);
     const collapsed=state.collapsed[proj];
-    const total=list.reduce((n,t)=>n+1+descendants(t.id).length,0);
+    const total = flat ? list.length : list.reduce((n,t)=>n+1+descendants(t.id).length,0);
     const sum=projSummary(proj);
     html+=`<tr class="grp${collapsed?' collapsed':''}" ondragover="onRowDragOver(event)" ondragleave="onRowDragLeave(event)" ondrop="dropToProject(event,'${esc(proj)}')"><td colspan="8"><div class="grp-head">
         <span class="chev" onclick="toggleGroup('${esc(proj)}')">▼</span>
@@ -766,7 +773,7 @@ function renderList(){
         <button class="pname-edit" title="작업 추가" onclick="event.stopPropagation();startNewTop('${esc(proj)}')">＋</button>
       </div></td></tr>`;
     if(!collapsed){
-      if(list.length) list.forEach(t=>{ html+=renderRow(t,0,vis); });
+      if(list.length) list.forEach(t=>{ html+=renderRow(t,0,vis,flat); });
       else html+=`<tr class="empty-row"><td colspan="8"><span class="muted">아직 작업이 없습니다.</span> <button class="btn btn-ghost btn-sm" onclick="startNewTop('${esc(proj)}')">＋ 작업 추가</button></td></tr>`;
     }
   });
@@ -783,7 +790,7 @@ function prColor(p){ return p==='높음'?'var(--pr-high)':p==='보통'?'var(--pr
 function cellSelect(id,field,value,values,extra){
   return `<select class="cell-select" style="${extra||''}" onclick="event.stopPropagation()" onchange="updateField('${id}','${field}',this.value)">${selOptions(values,value||'')}</select>`;
 }
-function renderRow(t,depth,vis){
+function renderRow(t,depth,vis,flat){
   const kids=childrenOf(t.id).filter(c=>!vis||vis.has(c.id));
   const open=state.expanded[t.id];
   const prog=progressOf(t.id);
@@ -800,7 +807,7 @@ function renderRow(t,depth,vis){
       <td class="muted" colspan="7" style="font-size:12px">작업명을 입력하면 등록됩니다. 등록 후 각 항목을 드롭다운으로 선택하세요.</td>
     </tr>`;
   }
-  const twisty = kids.length
+  const twisty = (!flat && kids.length)
     ? `<span class="twisty has" onclick="event.stopPropagation();toggleExpand('${t.id}')">${open?'▼':'▶'}</span>`
     : `<span class="twisty empty">•</span>`;
   let html=`<tr class="${depth?'child-row':''}" ondragover="onRowDragOver(event)" ondragleave="onRowDragLeave(event)" ondrop="dropAsChild(event,'${t.id}')">
@@ -818,7 +825,7 @@ function renderRow(t,depth,vis){
     <td>${cellSelect(t.id,'status',t.status||'진행대기',STATUSES)}</td>
     <td class="hide-sm">${docCellEditable(t)}</td>
   </tr>`;
-  if(kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
+  if(!flat && kids.length && open){ kids.forEach(c=>{ html+=renderRow(c,depth+1,vis); }); }
   return html;
 }
 /* 행 드래그: 상위 승격 / 다른 작업 하위로 이동 */
