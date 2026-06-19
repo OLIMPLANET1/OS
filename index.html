@@ -217,6 +217,11 @@
   .today-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;}
   .today-head h2{font-size:20px;font-weight:700;margin:0;letter-spacing:-.01em;}
   .today-head .sub{color:var(--text-muted);font-size:13px;}
+  .today-filter{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px;}
+  .today-filter button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-strong);background:var(--bg);color:var(--text-soft);font-size:13px;padding:5px 12px;border-radius:20px;cursor:pointer;}
+  .today-filter button:hover{background:var(--bg-soft);}
+  .today-filter button.on{background:var(--accent-soft);border-color:var(--accent);color:#1d4ed8;font-weight:600;}
+  .today-filter .av-dot{width:9px;height:9px;border-radius:50%;flex:none;}
   .today-stats{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
   .stat{border:1px solid var(--border);border-radius:8px;padding:9px 16px;min-width:88px;}
   .stat .n{font-size:21px;font-weight:700;line-height:1.1;}
@@ -1068,12 +1073,17 @@ function computeToday(){
   });
   return {over,today,doing,soon};
 }
+function setTodayAssignee(v){ state.filterAssignee=v; renderToday(); }
 function renderToday(){
   const T=todayStr();
   const wd=['일','월','화','수','목','금','토'][new Date().getDay()];
   const {over,today,doing,soon}=computeToday();
   let html=`<div class="today-head">
     <span class="sub">${T.replace(/-/g,'. ')} (${wd}) 기준</span>
+  </div>
+  <div class="today-filter">
+    <button class="${!state.filterAssignee?'on':''}" onclick="setTodayAssignee('')">전체</button>
+    ${allPeople().map(p=>{const a=avatarInfo(p);return `<button class="${state.filterAssignee===p?'on':''}" onclick="setTodayAssignee('${esc(p)}')"><span class="av-dot" style="background:${a.color}"></span>${esc(p)}</button>`;}).join('')}
   </div>
   <div class="today-stats">
     <div class="stat"><div class="n">${over.length}</div><div class="l">지연</div></div>
