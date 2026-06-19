@@ -270,6 +270,7 @@
 
   /* modal */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-start;justify-content:center;z-index:50;padding:40px 16px;overflow:auto;}
+  #dlg-overlay{z-index:100;}   /* 공용 다이얼로그는 작업 모달보다 위 */
   .overlay.open{display:flex;}
   .modal{background:var(--bg);border-radius:12px;width:100%;max-width:600px;box-shadow:0 10px 40px rgba(0,0,0,.18);}
   .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);}
