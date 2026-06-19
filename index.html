@@ -695,11 +695,12 @@ function visibleSet(){
   return vis;
 }
 
+const BASE_CATS = ['고객관리','고객발굴','기획/제안','마케팅','외주관리','현장관리','기타 문서정리','피드백'];
+function catList(){ return [...new Set([...BASE_CATS, ...distinct('category')])]; }
 function refreshDatalists(){
   const projects=[...new Set(state.tasks.map(t=>t.project).filter(Boolean))].sort();
-  const cats=[...new Set(state.tasks.map(t=>t.category).filter(Boolean))].sort();
   const set=(id,vals)=>{ const el=document.getElementById(id); if(el) el.innerHTML=vals.map(v=>`<option value="${esc(v)}">`).join(''); };
-  set('proj-list',projects); set('assignee-list',allPeople()); set('cat-list',cats);
+  set('proj-list',projects); set('assignee-list',allPeople()); set('cat-list',catList());
 }
 
 /* ---------- view switch ---------- */
@@ -818,7 +819,7 @@ function renderRow(t,depth,vis,flat){
       ${prog?`<span class="miniprog">${prog.done}/${prog.total}<span class="bar"><i style="width:${prog.pct}%"></i></span></span>`:''}
       <button class="subadd" onclick="event.stopPropagation();startNewSub('${t.id}')">＋ 하위</button>
     </div></td>
-    <td>${cellSelect(t.id,'category',t.category,['',...distinct('category')])}</td>
+    <td>${cellSelect(t.id,'category',t.category,['',...catList()])}</td>
     <td>${assigneeCell(t)}</td>
     <td>${cellSelect(t.id,'priority',t.priority,['','높음','보통','낮음'])}</td>
     <td><input type="date" class="cell-date" value="${esc(t.start)}" onclick="event.stopPropagation()" onchange="updateField('${t.id}','start',this.value)"></td>
