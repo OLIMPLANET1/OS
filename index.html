@@ -986,15 +986,15 @@ function startNewSub(parentId){
   const p=byId(parentId); if(!p) return;
   const id=uid();
   state.tasks.push({id,parentId,project:p.project,category:p.category,assignee:p.assignee,priority:'',start:'',end:'',status:state.statusTab||'진행대기',doc:'',progress:'',issue:'',order:Date.now()});
-  state.expanded[parentId]=true; state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
+  state.expanded[parentId]=true; state.collapsed[p.project]=false; state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
 }
 function startNewTop(project){
   const id=uid();
   state.tasks.push({id,parentId:null,project,category:'',assignee:'',priority:'',start:'',end:'',status:state.statusTab||'진행대기',doc:'',progress:'',issue:'',order:Date.now()});
   if(project && !state.projects.includes(project)) state.projects.unshift(project);
-  state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
+  state.collapsed[project]=false; state.newRowId=id; save({noSync:true}); renderList(); focusNewRow();
 }
-function focusNewRow(){ const el=document.getElementById('new-row-input'); if(el) el.focus(); }
+function focusNewRow(){ setTimeout(()=>{ const el=document.getElementById('new-row-input'); if(el){ el.focus(); if(el.scrollIntoView) el.scrollIntoView({block:'center',behavior:'smooth'}); } },40); }
 function commitNewRow(id,value){
   const t=byId(id); if(!t) return;
   const name=(value||'').trim();
