@@ -1107,7 +1107,7 @@ function renderToday(){
   let any=false;
   sections.forEach(([title,items,isOver])=>{
     if(!items.length) return; any=true;
-    items.sort(cmpTask);
+    items.sort((a,b)=>(a.project||'').localeCompare(b.project||'','ko')||cmpTask(a,b)); // 같은 프로젝트끼리 묶어 정렬
     html+=`<div class="todo-section"><h3>${title}<span class="c">${items.length}</span></h3><div class="todo-list">`;
     items.forEach(t=>{ html+=todoItem(t,T,isOver); });
     html+=`</div></div>`;
@@ -1115,7 +1115,7 @@ function renderToday(){
   if(!any && !doing.length) html+=`<div class="empty-today">🎉 오늘 처리할 일정 기반 업무가 없습니다.</div>`;
   // 기한 미정 진행 중: 기본 접힘
   if(doing.length){
-    doing.sort(cmpTask);
+    doing.sort((a,b)=>(a.project||'').localeCompare(b.project||'','ko')||cmpTask(a,b));
     const open=state.showOngoing;
     html+=`<div class="todo-section">
       <h3 style="cursor:pointer" onclick="state.showOngoing=!state.showOngoing;renderToday()">
